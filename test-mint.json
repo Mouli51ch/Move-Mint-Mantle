@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "name": "MoveMint Test Dance NFT",
+    "description": "First real blockchain mint from MoveMint on Story Protocol Aeneid Testnet",
+    "image": "https://example.com/dance.jpg",
+    "attributes": [
+      {
+        "trait_type": "Dance Style",
+        "value": "Hip Hop"
+      },
+      {
+        "trait_type": "Duration",
+        "value": "3:45"
+      },
+      {
+        "trait_type": "Difficulty",
+        "value": "Intermediate"
+      }
+    ]
+  }
+}

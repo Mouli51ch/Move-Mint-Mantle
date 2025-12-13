@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Minting Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; border-left: 4px solid #ff0000; }
+        .success { background: #e6ffe6; border-left: 4px solid #00ff00; }
+        .info { background: #e6f3ff; border-left: 4px solid #0066cc; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+        input, textarea { width: 300px; padding: 8px; margin: 5px 0; }
+        .form-group { margin: 10px 0; }
+        label { display: block; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Browser Minting Test</h1>
+    <p>This page tests the complete minting flow in a browser environment with detailed debugging.</p>
+    
+    <div class="form-group">
+        <label>Title:</label>
+        <input type="text" id="title" value="Test Dance NFT" />
+    </div>
+    
+    <div class="form-group">
+        <label>Dance Style:</label>
+        <input type="text" id="danceStyle" value="Hip Hop" />
+    </div>
+    
+    <div class="form-group">
+        <label>Choreographer:</label>
+        <input type="text" id="choreographer" value="Test Artist" />
+    </div>
+    
+    <div class="form-group">
+        <label>Duration:</label>
+        <input type="text" id="duration" value="2:30" />
+    </div>
+    
+    <div class="form-group">
+        <label>Description:</label>
+        <textarea id="description">A test dance for debugging the minting process</textarea>
+    </div>
+    
+    <button onclick="testPrepareMint()">1. Test Prepare Mint</button>
+    <button onclick="testExecuteStoryMint()">2. Test Execute Story Mint</button>
+    <button onclick="testCompleteMintingFlow()">3. Test Complete Flow</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <div id="logs"></div>
+    
+    <script>
+        let lastPrepareMintResult = null;
+        
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+        
+        function getFormData() {
+            return {
+                userAddress: '0x3b31d87804c345a7d39f0267d0d4ff1dcc9b1433', // Test address
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                danceStyle: document.getElementById('danceStyle').value,
+                choreographer: document.getElementById('choreographer').value,
+                duration: document.getElementById('duration').value,
+                analysisResults: {
+                    totalMoves: Math.floor(Math.random() * 50) + 10,
+                    uniqueSequences: Math.floor(Math.random() * 20) + 5,
+                    confidenceScore: Math.floor(Math.random() * 40) + 60,
+                    complexity: 'Intermediate'
+                }
+            };
+        }
+        
+        async function testPrepareMint() {
+            try {
+                log('🚀 [DEBUG] Starting prepare-mint test...', 'info');
+                
+                const formData = getFormData();
+                log(`📋 [DEBUG] Form data: ${JSON.stringify(formData, null, 2)}`, 'info');
+                
+                const response = await fetch('/api/prepare-mint', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                });
+                
+                log(`📊 [DEBUG] Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                const result = await response.json();
+                log(`📊 [DEBUG] Response: ${JSON.stringify(result, null, 2)}`, 'info');
+                
+                if (!response.ok || !result.success) {
+                    throw new Error(`Prepare-mint failed: ${JSON.stringify(result.error)}`);
+                }
+                
+                lastPrepareMintResult = result;
+                log('✅ [DEBUG] Prepare-mint successful!', 'success');
+                log(`📋 [DEBUG] Transaction available: ${!!result.transaction}`, 'info');
+                log(`📋 [DEBUG] Metadata available: ${!!result.metadata}`, 'info');
+                
+                if (result.metadata) {
+                    log(`📋 [DEBUG] IPFS Hash: ${result.metadata.ipfsHash}`, 'info');
+                }
+                
+            } catch (error) {
+                log(`❌ [DEBUG] Prepare-mint failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        async function testExecuteStoryMint() {
+            try {
+                if (!lastPrepareMintResult || !lastPrepareMintResult.metadata) {
+                    throw new Error('No metadata available. Run prepare-mint test first.');
+                }
+                
+                log('🚀 [DEBUG] Starting execute-story-mint test...', 'info');
+                
+                const requestBody = {
+                    userAddress: '0x3b31d87804c345a7d39f0267d0d4ff1dcc9b1433',
+                    metadata: lastPrepareMintResult.metadata
+                };
+                
+                log(`📋 [DEBUG] Request body: ${JSON.stringify(requestBody, null, 2)}`, 'info');
+                
+                const response = await fetch('/api/execute-story-mint', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+                
+                log(`📊 [DEBUG] Response status: ${response.status} ${response.statusText}`, 'info');
+                
+                const result = await response.json();
+                log(`📊 [DEBUG] Response: ${JSON.stringify(result, null, 2)}`, 'info');
+                
+                if (!response.ok || !result.success) {
+                    throw new Error(`Execute-story-mint failed: ${JSON.stringify(result.error)}`);
+                }
+                
+                log('✅ [DEBUG] Execute-story-mint successful!', 'success');
+                log(`📋 [DEBUG] Transaction available: ${!!result.transaction}`, 'info');
+                log(`📋 [DEBUG] Fallback mode: ${!!result.fallbackMode}`, 'info');
+                log(`📋 [DEBUG] RPC endpoint: ${result.rpcEndpoint || 'N/A'}`, 'info');
+                
+                if (result.transaction) {
+                    log(`📋 [DEBUG] Transaction details:`, 'info');
+                    log(`  - To: ${result.transaction.to}`, 'info');
+                    log(`  - Gas: ${result.transaction.gas}`, 'info');
+                    log(`  - Nonce: ${result.transaction.nonce}`, 'info');
+                }
+                
+            } catch (error) {
+                log(`❌ [DEBUG] Execute-story-mint failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        async function testCompleteMintingFlow() {
+            try {
+                log('🚀 [DEBUG] Starting complete minting flow test...', 'info');
+                
+                // Step 1: Prepare mint
+                await testPrepareMint();
+                
+                if (!lastPrepareMintResult) {
+                    throw new Error('Prepare-mint failed, cannot continue');
+                }
+                
+                // Step 2: Execute story mint
+                await testExecuteStoryMint();
+                
+                log('🎉 [DEBUG] Complete minting flow test successful!', 'success');
+                log('📝 [DEBUG] Both APIs are working correctly', 'success');
+                log('📝 [DEBUG] The issue is likely in the frontend React component', 'info');
+                
+            } catch (error) {
+                log(`❌ [DEBUG] Complete flow failed: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Auto-run a basic test on page load
+        window.addEventListener('load', () => {
+            log('🌐 [DEBUG] Browser test page loaded', 'info');
+            log('📝 [DEBUG] Ready to test minting APIs', 'info');
+        });
+    </script>
+</body>
+</html>

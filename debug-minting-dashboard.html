@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Minting Debug Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 15px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 30px; 
+            text-align: center; 
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .dashboard { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); 
+            gap: 20px; 
+            padding: 30px; 
+        }
+        .section { 
+            background: #f8f9fa; 
+            border-radius: 10px; 
+            padding: 25px; 
+            border-left: 5px solid #667eea;
+        }
+        .section h3 { 
+            color: #333; 
+            margin-bottom: 20px; 
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status { 
+            padding: 8px 15px; 
+            border-radius: 20px; 
+            font-size: 0.9em; 
+            font-weight: bold;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .status.pending { background: #e2e3e5; color: #383d41; }
+        button { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            border: none; 
+            padding: 12px 25px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 1em;
+            margin: 5px 5px 5px 0;
+            transition: all 0.3s ease;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        button:disabled { 
+            background: #6c757d; 
+            cursor: not-allowed; 
+            transform: none;
+            box-shadow: none;
+        }
+        .log { 
+            background: #2d3748; 
+            color: #e2e8f0; 
+            padding: 15px; 
+            border-radius: 8px; 
+            font-family: 'Courier New', monospace; 
+            font-size: 0.9em; 
+            max-height: 300px; 
+            overflow-y: auto; 
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .input-group { 
+            margin: 15px 0; 
+        }
+        .input-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+            color: #333;
+        }
+        .input-group input, .input-group select { 
+            width: 100%; 
+            padding: 10px; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 6px; 
+            font-size: 1em;
+        }
+        .input-group input:focus, .input-group select:focus { 
+            outline: none; 
+            border-color: #667eea; 
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .icon { font-size: 1.2em; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width { grid-column: 1 / -1; }
+        .code-block {
+            background: #f1f3f4;
+            border: 1px solid #e1e5e9;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid;
+        }
+        .alert.info { background: #d1ecf1; border-color: #0c5460; color: #0c5460; }
+        .alert.warning { background: #fff3cd; border-color: #856404; color: #856404; }
+        .alert.error { background: #f8d7da; border-color: #721c24; color: #721c24; }
+        .alert.success { background: #d4edda; border-color: #155724; color: #155724; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 NFT Minting Debug Dashboard</h1>
+            <p>Comprehensive Web3 Integration Testing & Debugging Tool</p>
+        </div>
+
+        <div class="dashboard">
+            <!-- Web3 Provider Check -->
+            <div class="section">
+                <h3><span class="icon">🌐</span> Web3 Provider Status</h3>
+                <div id="web3Status" class="status pending">Checking...</div>
+                <button onclick="checkWeb3Provider()">Check Web3 Provider</button>
+                <div id="web3Details"></div>
+            </div>
+
+            <!-- Wallet Connection -->
+            <div class="section">
+                <h3><span class="icon">👛</span> Wallet Connection</h3>
+                <div id="walletStatus" class="status pending">Not Connected</div>
+                <button onclick="connectWallet()" id="connectBtn">Connect Wallet</button>
+                <button onclick="checkWalletDetails()" id="detailsBtn" disabled>Check Details</button>
+                <div id="walletDetails"></div>
+            </div>
+
+            <!-- Network Verification -->
+            <div class="section">
+                <h3><span class="icon">🔗</span> Network Configuration</h3>
+                <div id="networkStatus" class="status pending">Unknown</div>
+                <button onclick="checkNetwork()">Check Network</button>
+                <button onclick="switchToStoryProtocol()" id="switchBtn" disabled>Switch to Story Protocol</button>
+                <div id="networkDetails"></div>
+            </div>
+
+            <!-- Contract Verification -->
+            <div class="section">
+                <h3><span class="icon">📄</span> Smart Contract Status</h3>
+                <div id="contractStatus" class="status pending">Not Checked</div>
+                <button onclick="verifyContract()">Verify Contract</button>
+                <div id="contractDetails"></div>
+            </div>
+
+            <!-- API Endpoints Testing -->
+            <div class="section">
+                <h3><span class="icon">🔌</span> API Endpoints</h3>
+                <div id="apiStatus" class="status pending">Not Tested</div>
+                <button onclick="testAPIs()">Test All APIs</button>
+                <div id="apiDetails"></div>
+            </div>
+
+            <!-- Transaction Simulation -->
+            <div class="section">
+                <h3><span class="icon">⚡</span> Transaction Simulation</h3>
+                <div id="txStatus" class="status pending">Ready</div>
+                <button onclick="simulateTransaction()" id="simulateBtn" disabled>Simulate Mint</button>
+                <div id="txDetails"></div>
+            </div>
+
+            <!-- Full Minting Test -->
+            <div class="section full-width">
+                <h3><span class="icon">🎯</span> Complete Minting Flow Test</h3>
+                <div class="input-group">
+                    <label>Test NFT Title:</label>
+                    <input type="text" id="testTitle" value="Debug Test Dance" placeholder="Enter test title">
+                </div>
+                <div class="input-group">
+                    <label>Dance Style:</label>
+                    <input type="text" id="testStyle" value="Hip Hop" placeholder="Enter dance style">
+                </div>
+                <div id="mintingStatus" class="status pending">Ready to Test</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="mintingProgress"></div>
+                </div>
+                <button onclick="testFullMintingFlow()" id="fullTestBtn" disabled>🚀 Test Complete Flow</button>
+                <div id="mintingResults"></div>
+            </div>
+
+            <!-- Debug Console -->
+            <div class="section full-width">
+                <h3><span class="icon">📋</span> Debug Console</h3>
+                <button onclick="clearLog()">Clear Log</button>
+                <button onclick="exportLog()">Export Log</button>
+                <div class="log" id="debugLog">Debug console initialized...\n</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let walletAddress = null;
+        let chainId = null;
+        let web3Provider = null;
+
+        // Configuration
+        const STORY_PROTOCOL_TESTNET = {
+            chainId: 1315,
+            name: 'Story Protocol Testnet (Aeneid)',
+            rpcUrl: 'https://aeneid.storyrpc.io',
+            explorerUrl: 'https://aeneid.storyscan.io',
+            currency: { name: 'IP', symbol: 'IP', decimals: 18 }
+        };
+
+        const SPG_CONTRACT = '0xc32A8a0FF3beDDDa58393d022aF433e78739FAbc';
+
+        // Logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('debugLog');
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            logElement.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[Debug Dashboard] ${message}`);
+        }
+
+        function updateStatus(elementId, status, message) {
+            const element = document.getElementById(elementId);
+            element.className = `status ${status}`;
+            element.textContent = message;
+        }
+
+        function updateProgress(percentage) {
+            document.getElementById('mintingProgress').style.width = `${percentage}%`;
+        }
+
+        // 1. Web3 Provider Check
+        async function checkWeb3Provider() {
+            log('Checking Web3 provider availability...');
+            
+            if (typeof window.ethereum === 'undefined') {
+                updateStatus('web3Status', 'error', 'No Web3 Provider Found');
+                document.getElementById('web3Details').innerHTML = `
+                    <div class="alert error">
+                        <strong>MetaMask Not Detected</strong><br>
+                        Please install MetaMask or another Web3 wallet to continue.
+                        <br><a href="https://metamask.io" target="_blank">Download MetaMask →</a>
+                    </div>
+                `;
+                log('No Web3 provider found. Please install MetaMask.', 'error');
+                return false;
+            }
+
+            web3Provider = window.ethereum;
+            updateStatus('web3Status', 'success', 'Web3 Provider Available');
+            
+            // Get provider details
+            const isMetaMask = web3Provider.isMetaMask;
+            const networkVersion = web3Provider.networkVersion;
+            
+            document.getElementById('web3Details').innerHTML = `
+                <div class="code-block">
+                    Provider: ${isMetaMask ? 'MetaMask' : 'Unknown'}<br>
+                    Network Version: ${networkVersion || 'Unknown'}<br>
+                    Connected: ${web3Provider.isConnected ? web3Provider.isConnected() : 'Unknown'}
+                </div>
+            `;
+            
+            log(`Web3 provider detected: ${isMetaMask ? 'MetaMask' : 'Unknown'}`, 'success');
+            return true;
+        }
+
+        // 2. Wallet Connection
+        async function connectWallet() {
+            if (!web3Provider) {
+                log('Web3 provider not available. Please check provider first.', 'error');
+                return;
+            }
+
+            try {
+                log('Requesting wallet connection...');
+                const accounts = await web3Provider.request({ method: 'eth_requestAccounts' });
+                
+                if (accounts.length > 0) {
+                    walletAddress = accounts[0];
+                    updateStatus('walletStatus', 'success', 'Connected');
+                    document.getElementById('detailsBtn').disabled = false;
+                    document.getElementById('simulateBtn').disabled = false;
+                    document.getElementById('fullTestBtn').disabled = false;
+                    
+                    log(`Wallet connected: ${walletAddress}`, 'success');
+                    await checkWalletDetails();
+                } else {
+                    updateStatus('walletStatus', 'error', 'No Accounts');
+                    log('No accounts returned from wallet', 'error');
+                }
+            } catch (error) {
+                updateStatus('walletStatus', 'error', 'Connection Failed');
+                log(`Wallet connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkWalletDetails() {
+            if (!walletAddress) return;
+
+            try {
+                // Get balance
+                const balance = await web3Provider.request({
+                    method: 'eth_getBalance',
+                    params: [walletAddress, 'latest']
+                });
+
+                // Get chain ID
+                const chainIdHex = await web3Provider.request({ method: 'eth_chainId' });
+                chainId = parseInt(chainIdHex, 16);
+
+                const balanceEth = parseInt(balance, 16) / Math.pow(10, 18);
+
+                document.getElementById('walletDetails').innerHTML = `
+                    <div class="code-block">
+                        Address: ${walletAddress}<br>
+                        Balance: ${balanceEth.toFixed(4)} ETH<br>
+                        Chain ID: ${chainId}<br>
+                        Network: ${chainId === STORY_PROTOCOL_TESTNET.chainId ? 'Story Protocol ✅' : 'Wrong Network ❌'}
+                    </div>
+                `;
+
+                log(`Wallet details updated. Balance: ${balanceEth.toFixed(4)} ETH, Chain: ${chainId}`);
+            } catch (error) {
+                log(`Failed to get wallet details: ${error.message}`, 'error');
+            }
+        }
+
+        // 3. Network Verification
+        async function checkNetwork() {
+            if (!web3Provider) {
+                log('Web3 provider not available', 'error');
+                return;
+            }
+
+            try {
+                const chainIdHex = await web3Provider.request({ method: 'eth_chainId' });
+                chainId = parseInt(chainIdHex, 16);
+
+                if (chainId === STORY_PROTOCOL_TESTNET.chainId) {
+                    updateStatus('networkStatus', 'success', 'Story Protocol Testnet');
+                    log('Connected to correct network: Story Protocol Testnet', 'success');
+                } else {
+                    updateStatus('networkStatus', 'warning', `Wrong Network (${chainId})`);
+                    document.getElementById('switchBtn').disabled = false;
+                    log(`Wrong network detected. Current: ${chainId}, Required: ${STORY_PROTOCOL_TESTNET.chainId}`, 'warning');
+                }
+
+                document.getElementById('networkDetails').innerHTML = `
+                    <div class="code-block">
+                        Current Chain ID: ${chainId}<br>
+                        Required Chain ID: ${STORY_PROTOCOL_TESTNET.chainId}<br>
+                        Status: ${chainId === STORY_PROTOCOL_TESTNET.chainId ? 'Correct ✅' : 'Incorrect ❌'}
+                    </div>
+                `;
+
+            } catch (error) {
+                updateStatus('networkStatus', 'error', 'Check Failed');
+                log(`Network check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function switchToStoryProtocol() {
+            try {
+                log('Switching to Story Protocol testnet...');
+                
+                await web3Provider.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: `0x${STORY_PROTOCOL_TESTNET.chainId.toString(16)}` }],
+                });
+                
+                log('Network switch successful', 'success');
+                await checkNetwork();
+                
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    try {
+                        log('Adding Story Protocol network to wallet...');
+                        await web3Provider.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: `0x${STORY_PROTOCOL_TESTNET.chainId.toString(16)}`,
+                                chainName: STORY_PROTOCOL_TESTNET.name,
+                                nativeCurrency: STORY_PROTOCOL_TESTNET.currency,
+                                rpcUrls: [STORY_PROTOCOL_TESTNET.rpcUrl],
+                                blockExplorerUrls: [STORY_PROTOCOL_TESTNET.explorerUrl],
+                            }],
+                        });
+                        log('Network added and switched successfully', 'success');
+                        await checkNetwork();
+                    } catch (addError) {
+                        log(`Failed to add network: ${addError.message}`, 'error');
+                    }
+                } else {
+                    log(`Network switch failed: ${switchError.message}`, 'error');
+                }
+            }
+        }
+
+        // 4. Contract Verification
+        async function verifyContract() {
+            log('Verifying Story Protocol SPG contract...');
+
+            try {
+                // Check if contract exists
+                const code = await web3Provider.request({
+                    method: 'eth_getCode',
+                    params: [SPG_CONTRACT, 'latest']
+                });
+
+                if (code === '0x') {
+                    updateStatus('contractStatus', 'error', 'Contract Not Found');
+                    log(`Contract not found at address: ${SPG_CONTRACT}`, 'error');
+                } else {
+                    updateStatus('contractStatus', 'success', 'Contract Verified');
+                    log('SPG contract found and verified', 'success');
+                }
+
+                document.getElementById('contractDetails').innerHTML = `
+                    <div class="code-block">
+                        Contract Address: ${SPG_CONTRACT}<br>
+                        Bytecode Length: ${code.length - 2} bytes<br>
+                        Status: ${code === '0x' ? 'Not Deployed ❌' : 'Deployed ✅'}
+                    </div>
+                `;
+
+            } catch (error) {
+                updateStatus('contractStatus', 'error', 'Verification Failed');
+                log(`Contract verification failed: ${error.message}`, 'error');
+            }
+        }
+
+        // 5. API Testing
+        async function testAPIs() {
+            log('Testing API endpoints...');
+            updateStatus('apiStatus', 'info', 'Testing...');
+
+            const endpoints = [
+                { name: 'Prepare Mint', url: '/api/prepare-mint' },
+                { name: 'Execute Story Mint', url: '/api/execute-story-mint' },
+                { name: 'Health Check', url: '/api/health' }
+            ];
+
+            let results = [];
+
+            for (const endpoint of endpoints) {
+                try {
+                    log(`Testing ${endpoint.name}...`);
+                    
+                    const testData = endpoint.name === 'Health Check' ? null : {
+                        userAddress: walletAddress || '0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6',
+                        title: 'Test Dance',
+                        danceStyle: 'Hip Hop',
+                        metadata: { ipfsHash: 'QmTest123', nftIpfsHash: 'QmTest456' }
+                    };
+
+                    const response = await fetch(endpoint.url, {
+                        method: endpoint.name === 'Health Check' ? 'GET' : 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: testData ? JSON.stringify(testData) : null
+                    });
+
+                    const result = await response.json();
+                    results.push({
+                        name: endpoint.name,
+                        status: response.ok ? 'success' : 'error',
+                        code: response.status,
+                        message: response.ok ? 'OK' : result.error || 'Failed'
+                    });
+
+                    log(`${endpoint.name}: ${response.status} ${response.ok ? 'OK' : 'Failed'}`, response.ok ? 'success' : 'error');
+
+                } catch (error) {
+                    results.push({
+                        name: endpoint.name,
+                        status: 'error',
+                        code: 'N/A',
+                        message: error.message
+                    });
+                    log(`${endpoint.name}: ${error.message}`, 'error');
+                }
+            }
+
+            const allSuccess = results.every(r => r.status === 'success');
+            updateStatus('apiStatus', allSuccess ? 'success' : 'error', allSuccess ? 'All APIs Working' : 'Some APIs Failed');
+
+            document.getElementById('apiDetails').innerHTML = `
+                <div class="code-block">
+                    ${results.map(r => `${r.name}: ${r.code} ${r.message} ${r.status === 'success' ? '✅' : '❌'}`).join('<br>')}
+                </div>
+            `;
+        }
+
+        // 6. Transaction Simulation
+        async function simulateTransaction() {
+            if (!walletAddress) {
+                log('Wallet not connected. Please connect wallet first.', 'error');
+                return;
+            }
+
+            log('Simulating minting transaction...');
+            updateStatus('txStatus', 'info', 'Simulating...');
+
+            try {
+                // Test the execute-story-mint endpoint
+                const response = await fetch('/api/execute-story-mint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userAddress: walletAddress,
+                        metadata: {
+                            ipfsHash: 'QmSimulationTest123',
+                            nftIpfsHash: 'QmSimulationTestNFT456'
+                        }
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.transaction) {
+                    updateStatus('txStatus', 'success', 'Simulation Successful');
+                    
+                    document.getElementById('txDetails').innerHTML = `
+                        <div class="code-block">
+                            To: ${result.transaction.to}<br>
+                            Gas: ${parseInt(result.transaction.gas, 16).toLocaleString()}<br>
+                            Gas Price: ${parseInt(result.transaction.gasPrice, 16)} wei<br>
+                            Nonce: ${parseInt(result.transaction.nonce, 16)}<br>
+                            RPC: ${result.rpcEndpoint}<br>
+                            Data Length: ${result.transaction.data.length} chars
+                        </div>
+                    `;
+
+                    log('Transaction simulation successful', 'success');
+                } else if (result.fallbackMode) {
+                    updateStatus('txStatus', 'warning', 'Fallback Mode');
+                    log('Simulation returned fallback mode (IPFS only)', 'warning');
+                } else {
+                    updateStatus('txStatus', 'error', 'Simulation Failed');
+                    log(`Simulation failed: ${result.error || 'Unknown error'}`, 'error');
+                }
+
+            } catch (error) {
+                updateStatus('txStatus', 'error', 'Simulation Error');
+                log(`Transaction simulation error: ${error.message}`, 'error');
+            }
+        }
+
+        // 7. Full Minting Flow Test
+        async function testFullMintingFlow() {
+            const title = document.getElementById('testTitle').value;
+            const style = document.getElementById('testStyle').value;
+
+            if (!title || !style) {
+                log('Please enter test title and dance style', 'error');
+                return;
+            }
+
+            log('Starting complete minting flow test...');
+            updateStatus('mintingStatus', 'info', 'Testing...');
+            updateProgress(0);
+
+            try {
+                // Step 1: Prepare mint (20%)
+                log('Step 1: Preparing mint transaction...');
+                updateProgress(20);
+
+                const prepareResponse = await fetch('/api/prepare-mint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userAddress: walletAddress,
+                        title: title,
+                        description: `Test dance: ${style}`,
+                        danceStyle: style,
+                        choreographer: 'Debug Tester',
+                        duration: '2:00',
+                        analysisResults: {
+                            totalMoves: 25,
+                            uniqueSequences: 10,
+                            confidenceScore: 85,
+                            complexity: 'Intermediate'
+                        }
+                    })
+                });
+
+                const prepareResult = await prepareResponse.json();
+                updateProgress(40);
+
+                if (!prepareResult.success) {
+                    throw new Error(`Prepare mint failed: ${prepareResult.error?.message || 'Unknown error'}`);
+                }
+
+                log('✅ Mint preparation successful', 'success');
+
+                // Step 2: Execute story mint (40%)
+                log('Step 2: Executing Story Protocol mint...');
+                updateProgress(60);
+
+                const executeResponse = await fetch('/api/execute-story-mint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userAddress: walletAddress,
+                        metadata: prepareResult.metadata
+                    })
+                });
+
+                const executeResult = await executeResponse.json();
+                updateProgress(80);
+
+                if (!executeResult.success) {
+                    throw new Error(`Execute mint failed: ${executeResult.error || 'Unknown error'}`);
+                }
+
+                // Step 3: Sign transaction (if available)
+                if (executeResult.transaction) {
+                    log('Step 3: Signing transaction with MetaMask...');
+                    
+                    const txHash = await web3Provider.request({
+                        method: 'eth_sendTransaction',
+                        params: [executeResult.transaction]
+                    });
+
+                    updateProgress(100);
+                    updateStatus('mintingStatus', 'success', 'Minting Successful!');
+                    
+                    document.getElementById('mintingResults').innerHTML = `
+                        <div class="alert success">
+                            <strong>🎉 Minting Successful!</strong><br>
+                            Transaction Hash: <code>${txHash}</code><br>
+                            <a href="${STORY_PROTOCOL_TESTNET.explorerUrl}/tx/${txHash}" target="_blank">View on Explorer →</a>
+                        </div>
+                        <div class="code-block">
+                            IPFS Hash: ${prepareResult.metadata.ipfsHash}<br>
+                            NFT IPFS Hash: ${prepareResult.metadata.nftIpfsHash}<br>
+                            Contract: ${executeResult.transaction.to}<br>
+                            Gas Used: ${parseInt(executeResult.transaction.gas, 16).toLocaleString()}
+                        </div>
+                    `;
+
+                    log(`🎉 Complete minting flow successful! TX: ${txHash}`, 'success');
+
+                } else if (executeResult.fallbackMode) {
+                    updateProgress(100);
+                    updateStatus('mintingStatus', 'warning', 'IPFS Success (RPC Issues)');
+                    
+                    document.getElementById('mintingResults').innerHTML = `
+                        <div class="alert warning">
+                            <strong>⚠️ Partial Success</strong><br>
+                            IPFS upload successful, but blockchain RPC is experiencing issues.<br>
+                            Your metadata is permanently stored on IPFS.
+                        </div>
+                        <div class="code-block">
+                            IPFS Hash: ${prepareResult.metadata.ipfsHash}<br>
+                            NFT IPFS Hash: ${prepareResult.metadata.nftIpfsHash}<br>
+                            Status: Metadata stored, blockchain pending
+                        </div>
+                    `;
+
+                    log('Partial success: IPFS upload completed, blockchain transaction pending due to RPC issues', 'warning');
+                }
+
+            } catch (error) {
+                updateProgress(0);
+                updateStatus('mintingStatus', 'error', 'Test Failed');
+                
+                document.getElementById('mintingResults').innerHTML = `
+                    <div class="alert error">
+                        <strong>❌ Minting Test Failed</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+
+                log(`❌ Complete minting flow failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Utility functions
+        function clearLog() {
+            document.getElementById('debugLog').textContent = 'Debug console cleared...\n';
+        }
+
+        function exportLog() {
+            const logContent = document.getElementById('debugLog').textContent;
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `minting-debug-log-${new Date().toISOString().slice(0, 19)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Initialize dashboard
+        window.addEventListener('load', async () => {
+            log('Debug dashboard initialized');
+            await checkWeb3Provider();
+            
+            // Auto-connect if already connected
+            if (web3Provider) {
+                try {
+                    const accounts = await web3Provider.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        walletAddress = accounts[0];
+                        updateStatus('walletStatus', 'success', 'Connected');
+                        document.getElementById('detailsBtn').disabled = false;
+                        document.getElementById('simulateBtn').disabled = false;
+                        document.getElementById('fullTestBtn').disabled = false;
+                        await checkWalletDetails();
+                        log('Auto-connected to existing wallet session', 'success');
+                    }
+                } catch (error) {
+                    log('Auto-connect failed, manual connection required', 'warning');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

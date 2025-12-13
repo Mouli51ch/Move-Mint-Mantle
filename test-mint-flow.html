@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Mint Flow</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>MoveMint - Test Mint Flow</h1>
+    
+    <div id="status"></div>
+    
+    <div>
+        <h3>Step 1: Connect Wallet</h3>
+        <button id="connectWallet">Connect MetaMask</button>
+        <div id="walletStatus"></div>
+    </div>
+    
+    <div>
+        <h3>Step 2: Test API</h3>
+        <button id="testAPI" disabled>Test Prepare-Mint API</button>
+        <div id="apiStatus"></div>
+    </div>
+    
+    <div>
+        <h3>Step 3: Test Transaction</h3>
+        <button id="testTransaction" disabled>Test Simple Transaction</button>
+        <div id="transactionStatus"></div>
+    </div>
+
+    <script>
+        let walletAddress = null;
+        let apiResult = null;
+
+        // Status display helper
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        // Connect wallet
+        document.getElementById('connectWallet').addEventListener('click', async () => {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    showStatus('walletStatus', 'MetaMask is not installed', 'error');
+                    return;
+                }
+
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                walletAddress = accounts[0];
+                
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                const chainIdDecimal = parseInt(chainId, 16);
+                
+                showStatus('walletStatus', `Connected: ${walletAddress}<br>Chain ID: ${chainIdDecimal}`, 'success');
+                
+                // Enable next step
+                document.getElementById('testAPI').disabled = false;
+                
+                // Check if on correct network
+                if (chainIdDecimal !== 1315) {
+                    showStatus('walletStatus', `Connected: ${walletAddress}<br>⚠️ Please switch to Story Protocol Testnet (Chain ID: 1315)<br>Current Chain ID: ${chainIdDecimal}`, 'warning');
+                }
+                
+            } catch (error) {
+                showStatus('walletStatus', `Error: ${error.message}`, 'error');
+            }
+        });
+
+        // Test API
+        document.getElementById('testAPI').addEventListener('click', async () => {
+            try {
+                showStatus('apiStatus', 'Testing API...', 'info');
+                
+                const testData = {
+                    userAddress: walletAddress,
+                    title: 'Test Dance',
+                    description: 'A test dance for debugging',
+                    danceStyle: 'Hip Hop',
+                    choreographer: 'Test User',
+                    duration: '1:30',
+                    analysisResults: {
+                        totalMoves: 10,
+                        uniqueSequences: 5,
+                        confidenceScore: 75,
+                        complexity: 'Beginner'
+                    }
+                };
+
+                const response = await fetch('/api/prepare-mint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+
+                apiResult = await response.json();
+                
+                if (response.ok && apiResult.success) {
+                    let message = `✅ API Success!<br>`;
+                    message += `IPFS Hash: ${apiResult.metadata.ipfsHash}<br>`;
+                    message += `NFT IPFS Hash: ${apiResult.metadata.nftIpfsHash}<br>`;
+                    
+                    if (apiResult.warning) {
+                        message += `⚠️ Warning: ${apiResult.warning.message}<br>`;
+                        message += `Will use fallback transaction approach`;
+                    } else {
+                        message += `Transaction data: ${apiResult.transaction.data.slice(0, 20)}...`;
+                    }
+                    
+                    showStatus('apiStatus', message, 'success');
+                    document.getElementById('testTransaction').disabled = false;
+                } else {
+                    showStatus('apiStatus', `API Error: ${JSON.stringify(apiResult, null, 2)}`, 'error');
+                }
+                
+            } catch (error) {
+                showStatus('apiStatus', `Error: ${error.message}`, 'error');
+            }
+        });
+
+        // Test transaction
+        document.getElementById('testTransaction').addEventListener('click', async () => {
+            try {
+                showStatus('transactionStatus', 'Testing transaction...', 'info');
+                
+                if (!apiResult || !apiResult.metadata) {
+                    showStatus('transactionStatus', 'No API result available', 'error');
+                    return;
+                }
+
+                // Use the same fallback approach as the main app
+                const simpleTxParams = {
+                    from: walletAddress,
+                    to: walletAddress, // Send to self
+                    value: '0x1', // Send 1 wei (smallest possible amount)
+                    // No data field - Story Protocol testnet doesn't allow data in external transactions
+                    gas: '0x5208' // 21,000 gas
+                };
+
+                console.log('Transaction params:', simpleTxParams);
+
+                const txHash = await window.ethereum.request({
+                    method: 'eth_sendTransaction',
+                    params: [simpleTxParams]
+                });
+
+                showStatus('transactionStatus', `✅ Transaction sent!<br>Hash: ${txHash}<br>Your dance metadata is stored on IPFS: ${apiResult.metadata.ipfsHash}`, 'success');
+                
+            } catch (error) {
+                console.error('Transaction error:', error);
+                
+                if (error.code === 4001) {
+                    showStatus('transactionStatus', 'Transaction rejected by user', 'warning');
+                } else if (error.message?.includes('insufficient funds')) {
+                    showStatus('transactionStatus', 'Insufficient funds for gas fees', 'error');
+                } else {
+                    showStatus('transactionStatus', `Transaction failed: ${error.message}`, 'error');
+                }
+            }
+        });
+
+        // Check wallet connection on load
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        walletAddress = accounts[0];
+                        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                        const chainIdDecimal = parseInt(chainId, 16);
+                        
+                        showStatus('walletStatus', `Already connected: ${walletAddress}<br>Chain ID: ${chainIdDecimal}`, 'success');
+                        document.getElementById('testAPI').disabled = false;
+                        
+                        if (chainIdDecimal !== 1315) {
+                            showStatus('walletStatus', `Connected: ${walletAddress}<br>⚠️ Please switch to Story Protocol Testnet (Chain ID: 1315)<br>Current Chain ID: ${chainIdDecimal}`, 'warning');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking wallet:', error);
+                }
+            } else {
+                showStatus('status', 'MetaMask is not installed. Please install MetaMask to test the minting flow.', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

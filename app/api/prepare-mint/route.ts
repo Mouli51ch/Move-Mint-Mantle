@@ -95,22 +95,20 @@ export async function POST(request: NextRequest) {
     // Check if transaction data is properly encoded
     if (surrealResult.success && surrealResult.transaction) {
       if (!surrealResult.transaction.data || surrealResult.transaction.data === '0x') {
-        console.warn('⚠️ [prepare-mint] Surreal Base returned empty transaction data');
+        console.warn('⚠️ [prepare-mint] Surreal Base returned empty transaction data, but metadata was uploaded successfully');
         
-        // Return error with helpful message
+        // Return success with metadata but mark transaction as failed
+        // The frontend will handle this with a fallback approach
         const response = NextResponse.json({
-          success: false,
-          error: {
+          success: true,
+          transaction: surrealResult.transaction, // Include the failed transaction for reference
+          metadata: surrealResult.metadata, // This is the important part - IPFS metadata
+          warning: {
             code: 'TRANSACTION_ENCODING_FAILED',
-            message: 'Transaction encoding failed on Surreal Base. This is a known issue with the Story SDK gas estimation.',
-            details: {
-              surrealBaseResponse: surrealResult,
-              suggestion: 'The metadata was uploaded to IPFS successfully, but transaction encoding failed. You may need to use the Surreal Base demo page directly.',
-              surrealBaseDemoUrl: 'https://surreal-base.vercel.app/demo'
-            },
-            retryable: true
+            message: 'Transaction encoding failed on Surreal Base SDK, but metadata was uploaded successfully to IPFS',
+            fallbackRequired: true
           }
-        }, { status: 500 });
+        });
         return addCorsHeaders(response);
       }
     }

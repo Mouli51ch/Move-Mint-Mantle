@@ -27,6 +27,15 @@ export default function Mint() {
   const [ipId, setIpId] = useState<string | null>(null)
   const [mintResult, setMintResult] = useState<any>(null)
 
+  // Debug: Log current state on every render
+  console.log('🎨 [RENDER] Mint page state:', { 
+    transactionHash, 
+    ipId, 
+    isLoading, 
+    mintingError: !!mintingError,
+    shouldShowSuccess: !!transactionHash
+  })
+
   // Wallet state management
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [isWalletConnected, setIsWalletConnected] = useState(false)
@@ -40,9 +49,39 @@ export default function Mint() {
   
   const isCorrectNetwork = walletChainId === STORY_PROTOCOL_TESTNET.id
 
-  // Check wallet connection on mount
+  // Track IP ID changes for debugging
+  useEffect(() => {
+    if (ipId) {
+      console.log('🆔 [DEBUG] IP ID state updated:', ipId);
+      // Store in sessionStorage as backup
+      sessionStorage.setItem('lastMintedIpId', ipId);
+    }
+  }, [ipId]);
+
+  // Track transaction hash changes
+  useEffect(() => {
+    if (transactionHash) {
+      console.log('📝 [DEBUG] Transaction hash updated:', transactionHash);
+      // Store in sessionStorage as backup
+      sessionStorage.setItem('lastTransactionHash', transactionHash);
+    }
+  }, [transactionHash]);
+
+  // Check wallet connection on mount and recover state if needed
   useEffect(() => {
     checkWalletConnection()
+    
+    // Recover state from sessionStorage if available
+    const savedIpId = sessionStorage.getItem('lastMintedIpId');
+    const savedTxHash = sessionStorage.getItem('lastTransactionHash');
+    
+    if (savedIpId && savedTxHash && !ipId && !transactionHash) {
+      console.log('🔄 [RECOVERY] Restoring state from session storage');
+      console.log('🆔 [RECOVERY] Restored IP ID:', savedIpId);
+      console.log('📝 [RECOVERY] Restored TX Hash:', savedTxHash);
+      setIpId(savedIpId);
+      setTransactionHash(savedTxHash);
+    }
 
     // Listen for account changes
     if (typeof window !== 'undefined' && window.ethereum) {
@@ -208,7 +247,7 @@ export default function Mint() {
           // Set the IP ID from server response
           if (result.ipId) {
             setIpId(result.ipId);
-            console.log('🆔 [DEBUG] IP ID set:', result.ipId);
+            console.log('🆔 [DEBUG] IP ID set from server:', result.ipId);
           }
           
           return txHash;
@@ -349,6 +388,7 @@ export default function Mint() {
         const storyTxHash = await handleStoryProtocolMint(result.metadata, walletAddress)
         setTransactionHash(storyTxHash)
         console.log('✅ [DEBUG] Story Protocol minting successful:', storyTxHash)
+        console.log('🆔 [DEBUG] IP ID after Story Protocol mint:', ipId)
         
       } else if (result.transaction) {
         console.log('📝 [DEBUG] Got transaction from prepare-mint, analyzing...')
@@ -368,6 +408,7 @@ export default function Mint() {
           setTransactionHash(storyTxHash)
           
           console.log('✅ [DEBUG] Direct contract transaction sent:', storyTxHash)
+          console.log('🆔 [DEBUG] IP ID after direct contract call:', ipId)
         } else {
           console.log('📝 [DEBUG] Using Surreal Base transaction data...')
           
@@ -454,15 +495,17 @@ export default function Mint() {
             if (receipt) {
               console.log('✅ [DEBUG] Transaction confirmed successfully')
               
-              // IP ID should already be set from the transaction preparation
-              // If not set, create one based on the transaction
-              if (!ipId && result.transaction) {
-                // Extract token ID from transaction data if available
+              // IP ID should already be set from the server response
+              // Only generate if somehow missing (shouldn't happen)
+              if (!ipId) {
+                console.warn('⚠️ [DEBUG] IP ID missing after successful transaction, generating fallback');
                 const tokenIdFromTx = result.debug?.tokenId || Math.floor(Date.now() / 1000);
                 const contractAddress = result.transaction.to || '0xc32A8a0FF3beDDDa58393d022aF433e78739FAbc';
                 const generatedIpId = '0x' + contractAddress.slice(2).toLowerCase() + tokenIdFromTx.toString(16).padStart(24, '0');
                 setIpId(generatedIpId);
-                console.log('🆔 [DEBUG] Generated IP ID from transaction:', generatedIpId);
+                console.log('🆔 [DEBUG] Generated fallback IP ID from transaction:', generatedIpId);
+              } else {
+                console.log('✅ [DEBUG] IP ID already set from server response:', ipId);
               }
               console.log('🎉 [DEBUG] Dance NFT minted successfully with IP ID:', ipId)
               console.log('📝 [DEBUG] Metadata stored on IPFS successfully')
@@ -683,6 +726,26 @@ export default function Mint() {
                     'Mint Dance NFT'
                   )}
                 </Button>
+
+                {/* Clear Session Button */}
+                {(transactionHash || ipId) && (
+                  <Button
+                    onClick={() => {
+                      console.log('🧹 [CLEAR] Clearing session and starting fresh');
+                      setTransactionHash(null);
+                      setIpId(null);
+                      setMintResult(null);
+                      setMintingError(null);
+                      sessionStorage.removeItem('lastMintedIpId');
+                      sessionStorage.removeItem('lastTransactionHash');
+                      console.log('✅ [CLEAR] Session cleared');
+                    }}
+                    variant="outline"
+                    className="w-full border-gray-600 text-gray-400 hover:bg-gray-800 hover:text-white transition duration-300"
+                  >
+                    Clear Session & Start Fresh
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -754,6 +817,12 @@ export default function Mint() {
                     {transactionHash === 'ipfs-success' ? 'Dance Data Stored Successfully! 🎉' : 'Minting Successful! 🎉'}
                   </h3>
                 </div>
+
+                {/* Debug info */}
+                {(() => {
+                  console.log('🎨 [SUCCESS DISPLAY] Rendering with state:', { transactionHash, ipId });
+                  return null;
+                })()}
 
                 <div className="space-y-6">
                   {transactionHash !== 'ipfs-success' ? (

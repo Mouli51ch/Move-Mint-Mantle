@@ -41,13 +41,21 @@ export function DancePoseVisualization({
   // Enhanced skeleton drawing for dance visualization
   const drawDanceSkeleton = (canvas: HTMLCanvasElement, poseFrame: PoseFrame) => {
     if (!canvas || !poseFrame || !poseFrame.keypoints) {
+      console.log('🎨 [drawDanceSkeleton] Missing data:', {
+        canvas: !!canvas,
+        poseFrame: !!poseFrame,
+        keypoints: poseFrame?.keypoints?.length || 0
+      })
       return
     }
 
     const ctx = canvas.getContext('2d', { willReadFrequently: false })
     if (!ctx) {
+      console.log('🎨 [drawDanceSkeleton] No canvas context')
       return
     }
+
+    console.log('🎨 [drawDanceSkeleton] Drawing skeleton with', poseFrame.keypoints.length, 'keypoints')
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -64,7 +72,9 @@ export function DancePoseVisualization({
       const pointA = poseFrame.keypoints[i]
       const pointB = poseFrame.keypoints[j]
 
-      if (pointA && pointB && pointA.confidence > 0.3 && pointB.confidence > 0.3) {
+      if (pointA && pointB && 
+          (pointA.confidence || pointA.visibility || 0) > 0.3 && 
+          (pointB.confidence || pointB.visibility || 0) > 0.3) {
         // Use gradient for more elegant lines
         const gradient = ctx.createLinearGradient(pointA.x, pointA.y, pointB.x, pointB.y)
         gradient.addColorStop(0, getDanceKeypointColor(i))
@@ -81,7 +91,8 @@ export function DancePoseVisualization({
     // Draw keypoints with enhanced styling
     ctx.globalAlpha = 1.0
     poseFrame.keypoints.forEach((point, index) => {
-      if (point && point.confidence > 0.3) {
+      const confidence = point.confidence || point.visibility || 0
+      if (point && confidence > 0.3) {
         const color = getDanceKeypointColor(index)
         
         // Draw outer glow
@@ -100,7 +111,7 @@ export function DancePoseVisualization({
         ctx.fill()
 
         // Add confidence indicator
-        if (point.confidence > 0.8) {
+        if (confidence > 0.8) {
           ctx.strokeStyle = '#00ff00'
           ctx.lineWidth = 2
           ctx.beginPath()
@@ -118,11 +129,17 @@ export function DancePoseVisualization({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !poseFrames || poseFrames.length === 0) {
+      console.log('🎨 [DancePoseVisualization] No canvas or pose frames:', {
+        canvas: !!canvas,
+        poseFrames: poseFrames?.length || 0
+      })
       return
     }
 
     const frameIndex = Math.max(0, Math.min(currentFrameIndex, poseFrames.length - 1))
     const currentFrame = poseFrames[frameIndex]
+    
+    console.log('🎨 [DancePoseVisualization] Drawing frame:', frameIndex, 'keypoints:', currentFrame?.keypoints?.length)
     
     if (currentFrame) {
       drawDanceSkeleton(canvas, currentFrame)

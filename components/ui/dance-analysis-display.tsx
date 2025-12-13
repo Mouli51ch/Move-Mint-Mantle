@@ -140,7 +140,12 @@ export function DanceAnalysisDisplay({
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-300">
-                    {(movement.timeRange.end - movement.timeRange.start).toFixed(1)}s
+                    {movement.timeRange?.end && movement.timeRange?.start
+                      ? (movement.timeRange.end - movement.timeRange.start).toFixed(1) + 's'
+                      : movement.duration
+                      ? (movement.duration / 1000).toFixed(1) + 's'
+                      : (movement.endTime - movement.startTime).toFixed(1) + 's'
+                    }
                   </td>
                 </tr>
               ))}

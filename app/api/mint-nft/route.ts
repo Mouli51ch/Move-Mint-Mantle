@@ -40,6 +40,24 @@ const NFT_CONTRACT_ABI = [
 ] as const;
 
 export async function POST(request: NextRequest) {
+  // This endpoint is DEPRECATED - use /api/mint-ip-asset instead
+  return NextResponse.json(
+    {
+      error: 'DEPRECATED ENDPOINT',
+      message: 'This endpoint is deprecated. Use /api/mint-ip-asset for Story Protocol IP Asset minting.',
+      correctEndpoint: '/api/mint-ip-asset',
+      reason: 'This endpoint uses old contract addresses and simple NFT minting instead of Story Protocol IP Assets',
+      migration: {
+        oldEndpoint: '/api/mint-nft',
+        newEndpoint: '/api/mint-ip-asset',
+        oldContract: '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44',
+        newGateway: '0x937bef10ba6fb941ed84b8d249abc76031429a9a',
+        newSPGContract: '0xc32A8a0FF3beDDDa58393d022aF433e78739FAbc'
+      }
+    },
+    { status: 410 } // 410 Gone - indicates the endpoint is deprecated
+  );
+
   try {
     const body = await request.json();
 

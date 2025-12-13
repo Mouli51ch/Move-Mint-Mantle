@@ -25,6 +25,8 @@ export interface UseVideoUploadReturn {
 }
 
 export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUploadReturn {
+  console.log('🎣 [useVideoUpload] Hook initialized with options:', options);
+  
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<ProgressUpdate | null>(null);
@@ -37,6 +39,10 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
     videoUploadSession,
     updateWorkflowStep 
   } = useSession();
+  
+  console.log('📊 [useVideoUpload] Session data:', {
+    videoUploadSession: videoUploadSession ? 'exists' : 'null'
+  });
 
   const clearError = useCallback(() => {
     setError(null);
@@ -47,22 +53,34 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
   }, []);
 
   const uploadVideo = useCallback(async (metadata: VideoMetadata, providedOperationId?: string) => {
+    console.log('🎬 [useVideoUpload] Starting upload process...');
+    console.log('  - Selected file:', selectedFile?.name, selectedFile?.size, 'bytes');
+    console.log('  - Metadata:', metadata);
+    console.log('  - Provided operation ID:', providedOperationId);
+    
     if (!selectedFile) {
+      console.error('❌ [useVideoUpload] No file selected');
       setError('No file selected');
       return;
     }
 
     // Validate file before upload
+    console.log('🔍 [useVideoUpload] Validating file...');
     const validation = validateFile(selectedFile);
+    console.log('  - Validation result:', validation);
+    
     if (!validation.valid) {
+      console.error('❌ [useVideoUpload] File validation failed:', validation.error);
       setError(validation.error || 'Invalid file');
       return;
     }
 
+    console.log('✅ [useVideoUpload] File validation passed');
     setIsUploading(true);
     setError(null);
 
     const uploadOperationId = providedOperationId || `upload_${Date.now()}`;
+    console.log('🆔 [useVideoUpload] Using operation ID:', uploadOperationId);
     
     try {
       // Set up progress tracking
@@ -108,10 +126,16 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
         currentItem: selectedFile.name,
       });
 
+      console.log('🚀 [useVideoUpload] Calling universalMintingEngineService.uploadVideo...');
+      console.log('  - File:', selectedFile.name, selectedFile.type, selectedFile.size);
+      console.log('  - Metadata:', JSON.stringify(metadata, null, 2));
+      
       const response: VideoUploadResponse = await universalMintingEngineService.uploadVideo(
         selectedFile,
         metadata
       );
+      
+      console.log('✅ [useVideoUpload] Upload response received:', response);
 
       // Update progress based on response
       if (response.success) {
@@ -142,14 +166,14 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
         });
 
         // Start polling for processing status
-        await pollProcessingStatus(response.videoId, operationId);
+        await pollProcessingStatus(response.videoId, uploadOperationId);
 
         // Update session to completed
         updateUploadProgress(response.videoId, 100, 'completed');
         updateWorkflowStep('analysis');
 
         // Complete the upload
-        progressTracker.complete(operationId, 'Video analysis complete!');
+        progressTracker.complete(uploadOperationId, 'Video analysis complete!');
         
         options.onUploadComplete?.(response.videoId);
       } else {
@@ -160,11 +184,17 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
       unsubscribe();
       
     } catch (err) {
+      console.error('❌ [useVideoUpload] Upload failed:', err);
+      console.error('  - Error type:', err?.constructor?.name);
+      console.error('  - Error message:', err instanceof Error ? err.message : 'Unknown error');
+      console.error('  - Error stack:', err instanceof Error ? err.stack : 'No stack trace');
+      
       const errorMessage = err instanceof Error ? err.message : 'Upload failed';
       setError(errorMessage);
-      progressTracker.fail(operationId, errorMessage);
+      progressTracker.fail(uploadOperationId, errorMessage);
       options.onError?.(errorMessage);
     } finally {
+      console.log('🏁 [useVideoUpload] Upload process finished');
       setIsUploading(false);
     }
   }, [selectedFile, options, validateFile]);

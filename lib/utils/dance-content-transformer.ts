@@ -154,14 +154,22 @@ export function transformMovementToDance(
   // Determine difficulty based on movement complexity
   const difficulty = determineDifficulty(genericMovement, danceStyle);
 
+  const timestamp = genericMovement.timestamp || genericMovement.startTime * 1000 || Date.now();
+  const duration = genericMovement.duration || (genericMovement.endTime - genericMovement.startTime) * 1000 || 1000;
+  const startTime = genericMovement.startTime || timestamp / 1000;
+  const endTime = genericMovement.endTime || (timestamp + duration) / 1000;
+
   return {
     id: genericMovement.id || `movement_${Date.now()}`,
     name: danceName,
     danceStyle,
     difficulty,
     confidence: genericMovement.confidence || 0.8,
-    timestamp: genericMovement.timestamp || Date.now(),
-    duration: genericMovement.duration || 1000,
+    timestamp,
+    duration,
+    startTime,
+    endTime,
+    timeRange: { start: startTime, end: endTime },
     bodyParts: transformBodyParts(genericMovement.bodyParts || []),
     technique: mapping?.technique || generateTechniqueDescription(danceName, danceStyle),
     description: generateMovementDescription(danceName, danceStyle, difficulty),

@@ -113,13 +113,19 @@ export default function Upload() {
   }
 
   const handleMetadataSubmit = async (metadata: any) => {
+    console.log('📋 [Upload Page] handleMetadataSubmit called');
+    console.log('  - Metadata:', metadata);
+    console.log('  - Selected file:', selectedFile?.name, selectedFile?.size);
+    
     setCurrentStep('uploading')
     
     // Generate operation ID for real-time progress tracking
     const newOperationId = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    console.log('🆔 [Upload Page] Generated operation ID:', newOperationId);
     setOperationId(newOperationId)
     
     // Start real-time progress tracking
+    console.log('📊 [Upload Page] Starting real-time progress tracking...');
     realTimeProgress.start('validating', 'Preparing to upload video...', {
       totalItems: 1,
       canCancel: true,
@@ -133,7 +139,13 @@ export default function Upload() {
       ]
     })
     
-    await uploadVideo(metadata, newOperationId)
+    console.log('🚀 [Upload Page] Calling uploadVideo...');
+    try {
+      await uploadVideo(metadata, newOperationId)
+      console.log('✅ [Upload Page] uploadVideo completed successfully');
+    } catch (error) {
+      console.error('❌ [Upload Page] uploadVideo failed:', error);
+    }
   }
 
   const handleCancel = () => {

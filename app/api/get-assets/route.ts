@@ -1,5 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// CORS and Security Headers
+function addCorsHeaders(response: NextResponse) {
+  // CORS Headers
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Version, X-Client-Platform');
+  response.headers.set('Access-Control-Max-Age', '86400');
+  
+  // Security Headers
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+  
+  return response;
+}
+
+// Handle preflight OPTIONS requests
+export async function OPTIONS(request: NextRequest) {
+  const response = new NextResponse(null, { status: 200 });
+  return addCorsHeaders(response);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -159,19 +183,22 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    return NextResponse.json(response);
+    const jsonResponse = NextResponse.json(response);
+    return addCorsHeaders(jsonResponse);
     
   } catch (error) {
     console.error('Get assets error:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to fetch assets' },
       { status: 500 }
     );
+    return addCorsHeaders(response);
   }
 }
 
 export async function POST() {
-  return NextResponse.json({
+  const response = NextResponse.json({
     error: 'Method not allowed. Use GET to retrieve assets.'
   }, { status: 405 });
+  return addCorsHeaders(response);
 }

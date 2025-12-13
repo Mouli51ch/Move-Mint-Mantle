@@ -1,5 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// CORS and Security Headers
+function addCorsHeaders(response: NextResponse) {
+  // CORS Headers
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Version, X-Client-Platform');
+  response.headers.set('Access-Control-Max-Age', '86400');
+  
+  // Security Headers
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+  
+  return response;
+}
+
+// Handle preflight OPTIONS requests
+export async function OPTIONS(request: NextRequest) {
+  const response = new NextResponse(null, { status: 200 });
+  return addCorsHeaders(response);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -8,10 +32,11 @@ export async function POST(request: NextRequest) {
     const { type, commercial, derivatives, royaltyPercentage } = body;
     
     if (!type || typeof commercial !== 'boolean' || typeof derivatives !== 'boolean') {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Missing required fields: type, commercial, derivatives' },
         { status: 400 }
       );
+      return addCorsHeaders(response);
     }
 
     // Generate license configuration
@@ -60,14 +85,16 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString()
     };
 
-    return NextResponse.json(response);
+    const jsonResponse = NextResponse.json(response);
+    return addCorsHeaders(jsonResponse);
     
   } catch (error) {
     console.error('License remixer error:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to create license configuration' },
       { status: 500 }
     );
+    return addCorsHeaders(response);
   }
 }
 
@@ -97,11 +124,12 @@ function generateLicenseTerms(type: string, commercial: boolean, derivatives: bo
 }
 
 export async function GET() {
-  return NextResponse.json({
+  const response = NextResponse.json({
     endpoint: 'license-remixer',
     status: 'active',
     description: 'Creates and configures IP licenses for dance NFTs',
     methods: ['POST'],
     supportedLicenseTypes: ['Creative Commons', 'Custom', 'Exclusive']
   });
+  return addCorsHeaders(response);
 }

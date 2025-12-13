@@ -17,7 +17,7 @@ export class APIClient {
 
   constructor(config: Partial<APIClientConfig> = {}) {
     this.config = {
-      baseURL: process.env.NEXT_PUBLIC_UNIVERSAL_MINTING_ENGINE_API_URL || 'https://api.universalmintingengine.com',
+      baseURL: process.env.NEXT_PUBLIC_UNIVERSAL_MINTING_ENGINE_API_URL || '',
       timeout: 30000, // 30 seconds
       retryAttempts: 3,
       retryDelay: 1000, // 1 second base delay
@@ -30,9 +30,18 @@ export class APIClient {
       ...config,
     };
 
+    console.log('🏗️ [APIClient] Constructor called');
+    console.log('  - Base URL from env:', process.env.NEXT_PUBLIC_UNIVERSAL_MINTING_ENGINE_API_URL);
+    console.log('  - Final base URL:', this.config.baseURL);
+    console.log('  - Config override:', config);
+    console.log('  - Final config:', this.config);
+
     // Add API key if available
     if (process.env.NEXT_PUBLIC_UNIVERSAL_MINTING_ENGINE_API_KEY) {
       this.config.headers['Authorization'] = `Bearer ${process.env.NEXT_PUBLIC_UNIVERSAL_MINTING_ENGINE_API_KEY}`;
+      console.log('🔑 [APIClient] API key added to headers');
+    } else {
+      console.log('⚠️ [APIClient] No API key found in environment');
     }
   }
 
@@ -42,8 +51,17 @@ export class APIClient {
   async request<T = any>(request: APIRequest): Promise<APIResponse<T>> {
     const requestId = this.generateRequestId();
     
+    console.log(`🔄 [APIClient] Starting request [${requestId}]`);
+    console.log('  - Endpoint:', request.endpoint);
+    console.log('  - Method:', request.method || 'GET');
+    console.log('  - Base URL:', this.config.baseURL);
+    console.log('  - Full URL will be:', `${this.config.baseURL}${request.endpoint}`);
+    console.log('  - Body type:', request.body ? request.body.constructor.name : 'none');
+    console.log('  - Headers:', request.headers);
+    
     // Check network connectivity first
     if (!networkMonitor.getStatus()) {
+      console.error('❌ [APIClient] No internet connection');
       const processedError = handleError(new Error('No internet connection'), {
         operation: 'api_request',
         component: 'APIClient',
@@ -53,9 +71,13 @@ export class APIClient {
     }
     
     try {
-      return await this.executeWithRetry(request, requestId);
+      const result = await this.executeWithRetry(request, requestId);
+      console.log(`✅ [APIClient] Request successful [${requestId}]:`, result);
+      return result;
     } catch (error) {
-      console.error(`API request failed [${requestId}]:`, error);
+      console.error(`❌ [APIClient] Request failed [${requestId}]:`, error);
+      console.error('  - Error type:', error?.constructor?.name);
+      console.error('  - Error message:', error instanceof Error ? error.message : 'Unknown');
       
       // Use comprehensive error handling
       const processedError = handleError(error, {
@@ -113,6 +135,13 @@ export class APIClient {
   ): Promise<APIResponse<T>> {
     const url = `${this.config.baseURL}${request.endpoint}`;
     const timeout = request.timeout || this.config.timeout;
+    
+    console.log(`🌐 [APIClient] Executing HTTP request [${requestId}]:`);
+    console.log('  - URL:', url);
+    console.log('  - Method:', request.method);
+    console.log('  - Endpoint:', request.endpoint);
+    console.log('  - Base URL:', this.config.baseURL);
+    console.log('  - Timeout:', timeout, 'ms');
 
     // Create AbortController for timeout handling
     const controller = new AbortController();
@@ -135,15 +164,35 @@ export class APIClient {
       // Add body for non-GET requests
       if (request.body && request.method !== 'GET') {
         if (request.body instanceof FormData) {
+          console.log(`📦 [APIClient] Using FormData body [${requestId}]`);
+          console.log('  - FormData entries:');
+          for (const [key, value] of request.body.entries()) {
+            if (value instanceof File) {
+              console.log(`    ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+            } else {
+              console.log(`    ${key}: ${typeof value === 'string' ? value.substring(0, 50) + '...' : value}`);
+            }
+          }
           // Remove Content-Type header for FormData (browser will set it with boundary)
           delete fetchConfig.headers!['Content-Type'];
           fetchConfig.body = request.body;
         } else {
+          console.log(`📝 [APIClient] Using JSON body [${requestId}]:`, request.body);
           fetchConfig.body = JSON.stringify(request.body);
         }
       }
 
+      console.log(`🚀 [APIClient] Sending fetch request [${requestId}]:`);
+      console.log('  - Final URL:', url);
+      console.log('  - Final headers:', fetchConfig.headers);
+      console.log('  - Body type:', fetchConfig.body ? fetchConfig.body.constructor.name : 'none');
+
       const response = await fetch(url, fetchConfig);
+      
+      console.log(`📡 [APIClient] Fetch response received [${requestId}]:`);
+      console.log('  - Status:', response.status, response.statusText);
+      console.log('  - Headers:', Object.fromEntries(response.headers.entries()));
+      console.log('  - OK:', response.ok);
       clearTimeout(timeoutId);
 
       // Handle HTTP errors
@@ -407,4 +456,6 @@ export class APIErrorHandler {
 }
 
 // Create default client instance
+console.log('🏭 [Client] Creating APIClient instance...');
 export const apiClient = new APIClient();
+console.log('✅ [Client] APIClient instance created');

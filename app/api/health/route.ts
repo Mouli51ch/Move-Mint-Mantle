@@ -1,4 +1,28 @@
-import { NextResponse } from 'next/server';
+  import { NextRequest, NextResponse } from 'next/server';
+
+// CORS and Security Headers
+function addCorsHeaders(response: NextResponse) {
+  // CORS Headers
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Version, X-Client-Platform');
+  response.headers.set('Access-Control-Max-Age', '86400');
+  
+  // Security Headers
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+  
+  return response;
+}
+
+// Handle preflight OPTIONS requests
+export async function OPTIONS(request: NextRequest) {
+  const response = new NextResponse(null, { status: 200 });
+  return addCorsHeaders(response);
+}
 
 export async function GET() {
   try {
@@ -25,11 +49,12 @@ export async function GET() {
       }
     };
 
-    return NextResponse.json(healthStatus);
+    const response = NextResponse.json(healthStatus);
+    return addCorsHeaders(response);
     
   } catch (error) {
     console.error('Health check error:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { 
         status: 'unhealthy',
         error: 'Health check failed',
@@ -37,5 +62,6 @@ export async function GET() {
       },
       { status: 500 }
     );
+    return addCorsHeaders(response);
   }
 }

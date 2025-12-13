@@ -11,6 +11,8 @@ import { DanceAnalysisDisplay } from "@/components/ui/dance-analysis-display"
 import { DancePoseVisualization } from "@/components/ui/dance-pose-visualization"
 import { useSession } from "@/hooks/use-session"
 import { transformAnalysisResults } from "@/lib/utils/dance-content-transformer"
+import { RealDanceAnalyzer } from "@/lib/utils/real-dance-analyzer"
+import { PoseFrame } from "@/hooks/use-mediapipe-pose"
 
 export default function Results() {
   const [recordingData, setRecordingData] = useState<{
@@ -33,15 +35,57 @@ export default function Results() {
   const [videoId, setVideoId] = useState<string | null>(null)
 
   // Session management
-  const { 
-    saveAnalysis, 
-    analysisSession, 
+  const {
+    saveAnalysis,
+    analysisSession,
     getCurrentVideoId,
-    updateWorkflowStep 
+    setCurrentVideoId,
+    updateWorkflowStep
   } = useSession()
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const skeletonCanvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Analyze REAL pose data - MUST BE BEFORE useEffect
+  const analyzeRealPoseData = (data: any) => {
+    setLoadingAnalysis(true)
+    try {
+      console.log('🎭 Analyzing REAL pose data from', data.poseKeypoints.length, 'frames')
+      const poseFrames: PoseFrame[] = data.poseKeypoints.map((f: any, i: number) => ({
+        timestamp: (i / 30) * 1000,
+        keypoints: (f.keypoints || []).map((kp: any, idx: number) => ({
+          x: kp.x || kp[0] || 0, 
+          y: kp.y || kp[1] || 0, 
+          z: 0,
+          confidence: kp.score || kp[2] || 0.85, // Use confidence instead of visibility
+          name: ['nose','left_eye','right_eye','left_ear','right_ear','left_shoulder','right_shoulder','left_elbow','right_elbow','left_wrist','right_wrist','left_hip','right_hip','left_knee','right_knee','left_ankle','right_ankle'][idx] || `kp_${idx}`
+        })),
+        confidence: f.score || 0.85
+      }));
+      
+      console.log('🔍 Created pose frames:', poseFrames.length, 'frames');
+      console.log('🔍 First frame keypoints:', poseFrames[0]?.keypoints?.length);
+      const analyzer = new RealDanceAnalyzer(poseFrames);
+      const results = analyzer.analyze();
+      const vid = 'video-' + Date.now();
+      results.videoId = vid;
+      
+      console.log('🔍 Analysis results poseData:', results.poseData?.length, 'frames');
+      console.log('🔍 First pose frame:', results.poseData?.[0]);
+      
+      setVideoId(vid);
+      setCurrentVideoId(vid);
+      setAnalysisResults(results);
+      saveAnalysis({ videoId: vid, analysisResults: results, analysisCompletedAt: Date.now(), qualityScore: results.qualityMetrics.overall });
+      updateWorkflowStep('results');
+      console.log('✅ REAL analysis done!', results);
+    } catch (e) {
+      console.error('❌ Analysis failed:', e);
+      setAnalysisError(e instanceof Error ? e.message : 'Analysis failed');
+    } finally {
+      setLoadingAnalysis(false);
+    }
+  };
 
   useEffect(() => {
     // Load recording data from sessionStorage
@@ -49,31 +93,58 @@ export default function Results() {
     if (stored) {
       const data = JSON.parse(stored)
       setRecordingData(data)
-      // Convert base64 back to blob URL
-      if (data.videoData) {
-        setVideoUrl(data.videoData)
+      if (data.videoData) setVideoUrl(data.videoData)
+
+      // REAL ANALYSIS: Use recorded pose data
+      if (data.poseKeypoints?.length > 0) {
+        console.log('🎭 Found REAL pose data! Analyzing...')
+        analyzeRealPoseData(data)
+        return
       }
     }
 
-    // Load video ID from session service
-    const storedVideoId = getCurrentVideoId()
-    if (storedVideoId) {
-      setVideoId(storedVideoId)
-      
-      // Check if we already have analysis results in session
-      if (analysisSession && analysisSession.videoId === storedVideoId) {
-        // Transform existing results if they haven't been transformed yet
-        const results = analysisSession.analysisResults.danceMetrics 
-          ? analysisSession.analysisResults 
-          : transformAnalysisResults(analysisSession.analysisResults)
-        
-        setAnalysisResults(results)
-        updateWorkflowStep('results')
-      } else {
-        fetchAnalysisResults(storedVideoId)
-      }
+    // Fallback: Use session or show error
+    let storedVideoId = getCurrentVideoId()
+    if (!storedVideoId) {
+      storedVideoId = 'video-' + Date.now()
+      setCurrentVideoId(storedVideoId)
+    }
+    setVideoId(storedVideoId)
+
+    if (analysisSession?.videoId === storedVideoId) {
+      const results = analysisSession.analysisResults.danceMetrics
+        ? analysisSession.analysisResults
+        : transformAnalysisResults(analysisSession.analysisResults)
+      setAnalysisResults(results)
+      updateWorkflowStep('results')
+    } else {
+      setAnalysisError('No recording found. Please record a dance video first.')
+      setLoadingAnalysis(false)
     }
   }, [])
+
+  // Auto-animate pose frames when no video is playing
+  useEffect(() => {
+    if (!analysisResults?.poseData || analysisResults.poseData.length === 0) {
+      return
+    }
+
+    const video = videoRef.current
+    if (video && !video.paused) {
+      return // Let video control the frame index
+    }
+
+    // Auto-cycle through frames
+    const interval = setInterval(() => {
+      setCurrentPoseIndex(prev => {
+        const nextIndex = (prev + 1) % analysisResults.poseData.length
+        console.log('🔄 Auto-cycling to pose frame:', nextIndex)
+        return nextIndex
+      })
+    }, 100) // 10 FPS
+
+    return () => clearInterval(interval)
+  }, [analysisResults?.poseData, videoRef.current?.paused])
 
   // Fetch analysis results from Universal Minting Engine API
   const fetchAnalysisResults = async (videoId: string) => {
@@ -82,12 +153,12 @@ export default function Results() {
 
     try {
       const rawResults = await universalMintingEngineService.getAnalysisResults(videoId)
-      
+
       // Transform generic movement data to dance-specific terminology
       const transformedResults = transformAnalysisResults(rawResults)
-      
+
       setAnalysisResults(transformedResults)
-      
+
       // Save transformed analysis results to session
       saveAnalysis({
         videoId,
@@ -95,17 +166,17 @@ export default function Results() {
         analysisCompletedAt: Date.now(),
         qualityScore: transformedResults.qualityMetrics.overall,
       })
-      
+
       // Update workflow step
       updateWorkflowStep('results')
-      
+
       // Update local recording data with API results
-      if (results.poseData && results.poseData.length > 0) {
+      if (transformedResults.poseData && transformedResults.poseData.length > 0) {
         const updatedRecordingData = {
           ...recordingData,
-          poseFrames: results.poseData.length,
-          duration: results.duration,
-          poseKeypoints: results.poseData.map(frame => ({
+          poseFrames: transformedResults.poseData.length,
+          duration: transformedResults.duration,
+          poseKeypoints: transformedResults.poseData.map(frame => ({
             keypoints: frame.keypoints,
             confidence: frame.confidence
           }))
@@ -300,8 +371,11 @@ export default function Results() {
 
     const handleTimeUpdate = () => {
       const currentTime = video.currentTime
-      const totalDuration = recordingData.duration
-      const totalFrames = recordingData.poseKeypoints?.length || 0
+      const totalDuration = recordingData?.duration || video.duration || 1
+      
+      // Use analysis results pose data if available, otherwise fall back to recording data
+      const poseFrames = analysisResults?.poseData || recordingData?.poseKeypoints || []
+      const totalFrames = poseFrames.length
 
       if (totalFrames === 0) return
 
@@ -311,11 +385,8 @@ export default function Results() {
 
       setCurrentPoseIndex(clampedIndex)
 
-      // Draw the skeleton for this frame
-      const poseFrame = recordingData.poseKeypoints[clampedIndex]
-      if (poseFrame) {
-        drawSkeleton(canvas, poseFrame)
-      }
+      // The DancePoseVisualization component will handle drawing the skeleton
+      console.log('🎬 Video time update: frame', clampedIndex, 'of', totalFrames, 'at time', currentTime.toFixed(2));
     }
 
     video.addEventListener('timeupdate', handleTimeUpdate)
@@ -482,6 +553,13 @@ export default function Results() {
                 currentFrameIndex={currentPoseIndex}
                 videoRef={videoRef}
               />
+              {/* Debug info */}
+              <div className="mt-2 text-xs text-gray-500">
+                Debug: {analysisResults?.poseData?.length || 0} pose frames available
+                {analysisResults?.poseData?.length > 0 && (
+                  <span> | Frame {currentPoseIndex}: {analysisResults.poseData[currentPoseIndex]?.keypoints?.length || 0} keypoints</span>
+                )}
+              </div>
             </div>
           </div>
 

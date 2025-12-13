@@ -34,9 +34,9 @@ export function WalletConnection({
   
   // Story Protocol Testnet configuration
   const STORY_PROTOCOL_TESTNET = {
-    id: 1513,
+    id: 1315, // Correct chain ID from RPC
     name: 'Story Protocol Testnet',
-    rpcUrl: 'https://testnet.storyrpc.io',
+    rpcUrl: 'https://aeneid.storyrpc.io',
   }
   
   // Derived state
@@ -83,17 +83,46 @@ export function WalletConnection({
   const handleConnect = async () => {
     try {
       if (typeof window !== 'undefined' && window.ethereum) {
-        await window.ethereum.request({ method: 'eth_requestAccounts' })
-        setShowWalletModal(false)
-        if (address) {
-          onConnect?.(address)
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+
+        if (accounts && accounts.length > 0) {
+          const walletAddress = accounts[0]
+          setAddress(walletAddress)
+          setIsConnected(true)
+          setShowWalletModal(false)
+
+          // Get chain ID
+          const chainId = await window.ethereum.request({ method: 'eth_chainId' })
+          setChainId(parseInt(chainId, 16))
+
+          // Get balance (with error handling for RPC issues)
+          try {
+            const balance = await window.ethereum.request({
+              method: 'eth_getBalance',
+              params: [walletAddress, 'latest']
+            })
+            const balanceInEther = parseInt(balance, 16) / Math.pow(10, 18)
+            setBalance(balanceInEther.toFixed(4))
+          } catch (balanceError) {
+            console.warn('Could not fetch balance:', balanceError)
+            // Continue without balance - not critical
+          }
+
+          // Call onConnect callback with the wallet address
+          onConnect?.(walletAddress)
+        } else {
+          setError('wallet must has at least one account')
         }
       } else {
         setError('No Web3 wallet detected. Please install MetaMask.')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Connection failed:', err)
-      setError('Failed to connect wallet')
+      if (err.code === 4001) {
+        setError('Connection request was rejected')
+      } else {
+        setError('Failed to connect wallet')
+      }
     }
   }
 
@@ -125,14 +154,17 @@ export function WalletConnection({
             method: 'wallet_addEthereumChain',
             params: [{
               chainId: `0x${STORY_PROTOCOL_TESTNET.id.toString(16)}`,
-              chainName: 'Story Protocol Testnet',
+              chainName: 'Story Protocol Aeneid Testnet',
               nativeCurrency: {
                 name: 'IP',
                 symbol: 'IP',
                 decimals: 18,
               },
-              rpcUrls: ['https://testnet.storyrpc.io'],
-              blockExplorerUrls: ['https://testnet.storyscan.xyz'],
+              rpcUrls: [
+                'https://aeneid.storyrpc.io',
+                'https://testnet.storyrpc.io'
+              ],
+              blockExplorerUrls: ['https://aeneid.storyscan.io'],
             }],
           })
           setChainId(STORY_PROTOCOL_TESTNET.id)
@@ -158,7 +190,8 @@ export function WalletConnection({
   // Get network name
   const getNetworkName = (chainId: number): string => {
     switch (chainId) {
-      case STORY_PROTOCOL_TESTNET.id:
+      case 1315:
+      case 1513:
         return 'Story Protocol Testnet'
       case 1:
         return 'Ethereum Mainnet'

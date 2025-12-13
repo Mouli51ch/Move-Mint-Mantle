@@ -163,7 +163,11 @@ export interface LicenseTemplate {
   name: string;
   description: string;
   category: string;
-  parameters: LicenseParameter[];
+  commercial: boolean;
+  derivatives: boolean;
+  royaltyPercentage: number;
+  features: string[];
+  parameters?: LicenseParameter[];
 }
 
 export interface LicenseParameter {
@@ -176,6 +180,8 @@ export interface LicenseParameter {
 }
 
 export interface CustomLicenseParams {
+  creatorAddress?: string;
+  creatorName?: string;
   commercialUse: boolean;
   derivativesAllowed: boolean;
   revenueSharePercentage: number;

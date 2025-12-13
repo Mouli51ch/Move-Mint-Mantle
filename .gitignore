@@ -54,6 +54,9 @@ coverage/
 # Vercel
 .vercel/
 
+# External repositories
+Surreal-Base/
+
 # Package manager files
 package-lock.json
 yarn.lock

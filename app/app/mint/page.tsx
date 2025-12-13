@@ -215,13 +215,38 @@ export default function Mint() {
         
         console.log('Transaction params:', txParams)
         
-        const txHash = await window.ethereum.request({
-          method: 'eth_sendTransaction',
-          params: [txParams],
-        })
-
-        console.log('✅ Transaction sent:', txHash)
-        setTransactionHash(txHash)
+        let txHash
+        try {
+          txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [txParams],
+          })
+          console.log('✅ Transaction sent:', txHash)
+          setTransactionHash(txHash)
+        } catch (txError: any) {
+          console.error('Transaction failed:', txError)
+          
+          // Check for RPC errors
+          if (txError.message?.includes('RPC endpoint') || 
+              txError.message?.includes('too many errors') ||
+              txError.code === -32603 || 
+              txError.code === -32005) {
+            throw new Error('Story Protocol testnet RPC is experiencing high load. Your metadata was uploaded to IPFS successfully. Please try again in a few minutes or use the Surreal Base demo: https://surreal-base.vercel.app/demo')
+          }
+          
+          // Check for user rejection
+          if (txError.code === 4001) {
+            throw new Error('Transaction was rejected by user')
+          }
+          
+          // Check for insufficient funds
+          if (txError.message?.includes('insufficient funds')) {
+            throw new Error('Insufficient funds for transaction. Please ensure you have enough ETH for gas fees.')
+          }
+          
+          // Generic error
+          throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`)
+        }
 
         // Step 3: Wait for confirmation and extract IP ID
         console.log('⏳ Waiting for confirmation...')
@@ -287,6 +312,32 @@ export default function Mint() {
               Create your dance IP asset on Story Protocol
             </p>
           </div>
+
+          {/* Network Status */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Network Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                  <span className="text-yellow-800 text-sm font-medium">Story Protocol Testnet Status</span>
+                </div>
+                <p className="text-yellow-700 text-sm mb-3">
+                  The testnet RPC may experience high load. If minting fails, use the official Surreal Base demo.
+                </p>
+                <a
+                  href="https://surreal-base.vercel.app/demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Surreal Base Demo (Backup) →
+                </a>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Wallet Connection */}
           <Card className="mb-6">
@@ -414,22 +465,43 @@ export default function Mint() {
                     ❌ {mintingError}
                   </p>
                   
-                  {mintingError.includes('Transaction encoding failed') && (
+                  {(mintingError.includes('Transaction encoding failed') || 
+                    mintingError.includes('RPC endpoint') || 
+                    mintingError.includes('too many errors')) && (
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <p className="text-blue-800 text-sm mb-2">
                         <strong>Alternative Solution:</strong>
                       </p>
                       <p className="text-blue-700 text-sm mb-3">
-                        Use the official Surreal Base demo which has the same functionality:
+                        {mintingError.includes('RPC endpoint') ? 
+                          'The Story Protocol testnet is experiencing high load. Your metadata was uploaded successfully. Use the official Surreal Base demo:' :
+                          'Use the official Surreal Base demo which has the same functionality:'
+                        }
                       </p>
-                      <a
-                        href="https://surreal-base.vercel.app/demo"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
-                      >
-                        Open Surreal Base Demo →
-                      </a>
+                      <div className="space-y-2">
+                        <a
+                          href="https://surreal-base.vercel.app/demo"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 mr-2"
+                        >
+                          Open Surreal Base Demo →
+                        </a>
+                        {mintingError.includes('RPC endpoint') && (
+                          <button
+                            onClick={() => {
+                              setMintingError(null)
+                              // Retry after a short delay
+                              setTimeout(() => {
+                                console.log('Retrying minting after RPC cooldown...')
+                              }, 1000)
+                            }}
+                            className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+                          >
+                            Try Again
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

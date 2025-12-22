@@ -1,0 +1,54 @@
+{
+  "name": "movemint-nft-contract",
+  "version": "1.0.0",
+  "description": "Production-ready ERC721 NFT contract for minting dance performances with IP-style metadata on Mantle Testnet",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.ts --network mantleTestnet",
+    "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
+    "clean": "hardhat clean",
+    "typechain": "hardhat typechain",
+    "node": "hardhat node",
+    "verify": "hardhat verify --network mantleTestnet"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mouli51ch/Move-Mint-Mantle.git"
+  },
+  "keywords": [
+    "nft",
+    "erc721",
+    "dance",
+    "blockchain",
+    "mantle",
+    "web3",
+    "smart-contracts",
+    "solidity",
+    "hardhat",
+    "movemint"
+  ],
+  "author": "MoveMint Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Mouli51ch/Move-Mint-Mantle/issues"
+  },
+  "homepage": "https://github.com/Mouli51ch/Move-Mint-Mantle#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "hardhat": "^2.19.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "dotenv": "^16.3.1"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

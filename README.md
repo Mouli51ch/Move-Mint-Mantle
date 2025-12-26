@@ -1,19 +1,39 @@
 # MoveMint - Dance NFT Minting Platform
 
-A Web3 application for minting dance performances as NFTs on Mantle Network blockchain.
+🕺💃 **Complete Web3 application for minting dance performances as NFTs on Mantle Network.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![Mantle](https://img.shields.io/badge/Mantle-Testnet-green)](https://mantle.xyz/)
+
+## 🚀 **Live Application**
+
+- **Contract:** `0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073`
+- **Network:** Mantle Sepolia Testnet (Chain ID: 5003)
+- **Explorer:** [View on Mantle Explorer](https://explorer.sepolia.mantle.xyz/address/0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073)
 
 ## 🎯 Overview
 
-MoveMint allows dancers and choreographers to mint their dance performances as NFTs on Mantle Network. The application provides a simplified, user-friendly interface for creating dance NFTs with proper metadata storage on IPFS.
+MoveMint is a complete Web3 application that allows dancers and choreographers to mint their dance performances as NFTs on Mantle Network. The application provides a user-friendly interface for creating dance NFTs with proper metadata storage and blockchain integration.
 
 ## ✨ Features
 
+### Frontend Application
 - **Simple Minting Interface**: Clean, focused UI for dance metadata input
 - **Mantle Network Integration**: Fast and affordable NFT creation on Mantle Sepolia Testnet
-- **Wallet Integration**: MetaMask and Coinbase Wallet support with automatic network switching
+- **Wallet Integration**: MetaMask support with automatic network switching
+- **Real-time Movement Detection**: TensorFlow.js integration for dance analysis
 - **IPFS Storage**: Metadata stored on IPFS for decentralized access
 - **Error Handling**: Robust error handling with clear user feedback
-- **Real Blockchain Integration**: Everything uses actual Mantle blockchain
+- **Real Blockchain Integration**: Direct contract interaction using ethers.js
+
+### Smart Contract Features
+- ✅ **ERC721** standard with enumeration and URI storage
+- ✅ **ERC2981** royalty support (5% default, customizable per token)
+- ✅ **Decentralized minting** - users mint their own NFTs
+- ✅ **Rich metadata** - title, dance style, choreographer, duration, IPFS hash
+- ✅ **Creator tracking** - query all tokens by creator address
+- ✅ **IPFS integration** - automatic tokenURI resolution to IPFS
 
 ## 🚀 Quick Start
 
@@ -22,13 +42,14 @@ MoveMint allows dancers and choreographers to mint their dance performances as N
 - Node.js 18+ 
 - npm or yarn
 - MetaMask or compatible Web3 wallet
+- Testnet MNT tokens from [Mantle Faucet](https://faucet.sepolia.mantle.xyz/)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd move-mint-frontend-ui
+git clone https://github.com/Mouli51ch/Move-Mint-Mantle.git
+cd Move-Mint-Mantle
 
 # Install dependencies
 npm install
@@ -73,18 +94,55 @@ NEXT_PUBLIC_MANTLE_RPC_URL=https://rpc.sepolia.mantle.xyz
 - **Explorer**: https://explorer.sepolia.mantle.xyz
 - **Contract**: 0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073
 
+### Add to MetaMask
+
+```
+Network Name: Mantle Sepolia Testnet
+RPC URL: https://rpc.sepolia.mantle.xyz
+Chain ID: 5003
+Currency Symbol: MNT
+Block Explorer: https://explorer.sepolia.mantle.xyz
+```
+
 ## 🏗️ Architecture
 
 ### Frontend
 - **Framework**: Next.js 16 with TypeScript
 - **Styling**: Tailwind CSS
-- **Web3**: Direct wallet integration (MetaMask, Coinbase Wallet)
+- **Web3**: Direct wallet integration (MetaMask)
 - **UI Components**: Custom components with shadcn/ui
+- **Movement Detection**: TensorFlow.js for dance analysis
 
-### Backend Integration
-- **API**: RESTful API endpoints for metadata preparation
-- **Blockchain**: Mantle Network via direct contract interaction
-- **Storage**: IPFS for metadata storage
+### Smart Contract
+```
+MoveMintNFT Contract
+├── ERC721 (Base NFT functionality)
+├── ERC721Enumerable (Token enumeration)
+├── ERC721URIStorage (Individual token URIs)
+├── ERC2981 (Royalty standard)
+└── Ownable (Access control)
+```
+
+### Core Functions
+
+```solidity
+// Mint a new dance performance NFT
+function mintDance(
+    string memory title,
+    string memory danceStyle,
+    string memory choreographer,
+    uint256 duration,
+    string memory ipfsMetadataHash
+) public returns (uint256)
+
+// Get all tokens minted by a creator
+function getCreatorTokens(address creator) 
+    public view returns (uint256[] memory)
+
+// Get full metadata for a token
+function getDanceMetadata(uint256 tokenId) 
+    public view returns (DanceMetadata memory)
+```
 
 ### Data Flow
 ```
@@ -94,27 +152,24 @@ User Input → /api/mint-nft → IPFS → Mantle Contract → NFT Token
 ## 📁 Project Structure
 
 ```
-move-mint-frontend-ui/
+Move-Mint-Mantle/
 ├── app/                    # Next.js app directory
 │   ├── api/               # API routes
-│   │   └── prepare-mint/  # Main minting endpoint
+│   │   └── mint-nft/      # Main minting endpoint
 │   └── app/               # Application pages
 │       └── mint/          # Minting interface
 ├── components/            # React components
 ├── lib/                   # Utilities and services
-├── hooks/                 # Custom React hooks
-├── scripts/               # Test and utility scripts
+├── contracts/             # Smart contracts
+├── scripts/               # Deployment and utility scripts
+├── test/                  # Contract tests
 └── docs/                  # Documentation files
 ```
 
 ## 🧪 Testing
 
-Run the test suite to verify functionality:
-
+### Frontend Testing
 ```bash
-# Test the minting API
-node scripts/test-simplified-mint.js
-
 # Run all tests
 npm test
 
@@ -122,10 +177,22 @@ npm test
 npm run build
 ```
 
+### Contract Testing
+```bash
+# Compile contracts
+npm run compile
+
+# Run contract tests
+npx hardhat test
+
+# Test contract interaction
+npx hardhat run scripts/test-contract.ts --network mantleTestnet
+```
+
 ## 🔧 API Endpoints
 
-### POST /api/prepare-mint
-Prepares dance metadata for minting on Story Protocol.
+### POST /api/mint-nft
+Prepares dance metadata for minting on Mantle Network.
 
 **Request:**
 ```json
@@ -143,30 +210,73 @@ Prepares dance metadata for minting on Story Protocol.
 ```json
 {
   "success": true,
-  "transaction": {
-    "to": "0x...",
-    "data": "0x...",
-    "value": "0",
-    "gasEstimate": "800000"
-  },
   "metadata": {
+    "name": "My Dance",
+    "description": "A beautiful dance performance",
     "ipfsHash": "Qm...",
-    "nftIpfsHash": "Qm..."
-  }
+    "dance_data": {
+      "style": "Hip Hop",
+      "choreographer": "Artist Name",
+      "duration": "2:30"
+    }
+  },
+  "contractAddress": "0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073"
 }
 ```
 
-## 🚨 Known Issues & Solutions
+## 📱 Frontend Integration
 
-### Transaction Encoding Issue
-Due to a known issue with Story Protocol SDK gas estimation, transaction encoding may fail. The application handles this gracefully by:
+### Quick Integration
 
-1. Detecting the issue
-2. Providing clear error messages
-3. Directing users to the official Surreal Base demo: https://surreal-base.vercel.app/demo
+```typescript
+import { ethers } from 'ethers';
 
-### RPC Connectivity
-Story Protocol testnet RPC may experience high load. The application provides fallback solutions and clear user guidance.
+const CONTRACT_ADDRESS = "0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073";
+const provider = new ethers.BrowserProvider(window.ethereum);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+// Mint a dance NFT
+async function mintDance() {
+  const signer = await provider.getSigner();
+  const contractWithSigner = contract.connect(signer);
+  
+  const tx = await contractWithSigner.mintDance(
+    "Urban Flow",           // title
+    "Hip Hop",             // danceStyle  
+    "Jane Doe",            // choreographer
+    180,                   // duration (seconds)
+    "QmYourIPFSHash"       // ipfsMetadataHash
+  );
+  
+  const receipt = await tx.wait();
+  console.log("NFT minted! Token ID:", receipt.logs[0].topics[1]);
+}
+```
+
+## 📊 Contract Specifications
+
+| Feature | Details |
+|---------|---------|
+| **Standard** | ERC721 + ERC2981 + Enumerable + URI Storage |
+| **Compiler** | Solidity ^0.8.20 |
+| **Optimization** | 200 runs |
+| **Gas Cost** | ~150,000-200,000 gas per mint |
+| **Royalty** | 5% default (customizable) |
+| **Max Supply** | Unlimited |
+
+### Metadata Structure
+
+```typescript
+interface DanceMetadata {
+  title: string;           // "Urban Flow"
+  danceStyle: string;      // "Hip Hop", "Ballet", etc.
+  choreographer: string;   // "Jane Doe"
+  duration: number;        // 180 (seconds)
+  ipfsMetadataHash: string; // "QmXxXx..."
+  creator: address;        // Minter's address
+  mintedAt: uint256;       // Block timestamp
+}
+```
 
 ## 🛠️ Development
 
@@ -182,11 +292,13 @@ Story Protocol testnet RPC may experience high load. The application provides fa
 - Prettier for formatting
 - Conventional commits
 
-## 📚 Documentation
+## 🔒 Security
 
-- [MVP Status](./MVP_STATUS_FINAL.md) - Current project status
-- [Final Solution Guide](./FINAL_MVP_SOLUTION.md) - Complete user guide
-- [API Documentation](./API_DOCUMENTATION_UPDATED.md) - Detailed API specs
+### Security Features
+- **Reentrancy Protection** - OpenZeppelin's ReentrancyGuard patterns
+- **Input Validation** - Comprehensive validation of all parameters
+- **Access Control** - Role-based permissions for admin functions
+- **Safe Math** - Built-in overflow protection in Solidity ^0.8.0
 
 ## 🤝 Contributing
 
@@ -200,19 +312,30 @@ Story Protocol testnet RPC may experience high load. The application provides fa
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## 🆘 Support
 
-- [Story Protocol](https://storyprotocol.xyz/) for IP infrastructure
-- [Surreal Base](https://surreal-base.vercel.app/) for Universal Minting Engine
-- Next.js and React communities for excellent tooling
+### Getting Help
+- **Issues:** Open an issue on GitHub
+- **Documentation:** Check the docs/ directory
+- **Discussions:** Use GitHub Discussions for questions
 
-## 📞 Support
+### Troubleshooting
 
-For questions or issues:
-1. Check the [documentation](./docs/)
-2. Review [known issues](#-known-issues--solutions)
-3. Open an issue on GitHub
+**Common Issues:**
+
+1. **"Insufficient funds"** - Get testnet MNT from [faucet](https://faucet.sepolia.mantle.xyz/)
+2. **"Wrong network"** - Switch to Mantle Sepolia Testnet (Chain ID: 5003)
+3. **"Transaction failed"** - Check gas limits and input validation
+
+## 🎉 Acknowledgments
+
+- **OpenZeppelin** - For secure, audited smart contract standards
+- **Mantle Network** - For fast, low-cost blockchain infrastructure
+- **Next.js & React** - For excellent frontend framework
+- **TensorFlow.js** - For movement detection capabilities
 
 ---
 
-**Built with ❤️ for the dance and Web3 communities**
+**Built with ❤️ for the dance and Web3 communities - Where dance meets blockchain** 🕺💃
+
+**Ready to mint your dance performances as NFTs? Let's move!** 🚀

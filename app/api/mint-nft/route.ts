@@ -1,219 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createPublicClient, createWalletClient, http, parseEther } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 
-// Story Protocol Aeneid Testnet Configuration (updated from Surreal-Base)
-const storyProtocolTestnet = {
-  id: 1513,
-  name: 'Story Protocol Aeneid Testnet',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'IP',
-    symbol: 'IP',
-  },
-  rpcUrls: {
-    default: {
-      http: [process.env.NEXT_PUBLIC_RPC_URL_AENEID || 'https://rpc.aeneid.testnet.story.foundation'],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: 'Story Explorer',
-      url: process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://aeneid.testnet.story.foundation',
-    },
-  },
-  testnet: true,
-} as const;
+// CORS and Security Headers
+function addCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  response.headers.set('Access-Control-Max-Age', '86400');
+  return response;
+}
 
-// NFT Contract ABI (ERC-721 with minting)
-const NFT_CONTRACT_ABI = [
-  {
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'tokenURI', type: 'string' }
-    ],
-    name: 'mint',
-    outputs: [{ name: 'tokenId', type: 'uint256' }],
-    stateMutability: 'payable',
-    type: 'function'
-  }
-] as const;
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 200 });
+  return addCorsHeaders(response);
+}
 
 export async function POST(request: NextRequest) {
-  // This endpoint is DEPRECATED - use /api/mint-ip-asset instead
-  return NextResponse.json(
-    {
-      error: 'DEPRECATED ENDPOINT',
-      message: 'This endpoint is deprecated. Use /api/mint-ip-asset for Story Protocol IP Asset minting.',
-      correctEndpoint: '/api/mint-ip-asset',
-      reason: 'This endpoint uses old contract addresses and simple NFT minting instead of Story Protocol IP Assets',
-      migration: {
-        oldEndpoint: '/api/mint-nft',
-        newEndpoint: '/api/mint-ip-asset',
-        oldContract: '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44',
-        newGateway: '0x937bef10ba6fb941ed84b8d249abc76031429a9a',
-        newSPGContract: '0xc32A8a0FF3beDDDa58393d022aF433e78739FAbc'
-      }
-    },
-    { status: 410 } // 410 Gone - indicates the endpoint is deprecated
-  );
-
   try {
+    console.log('🎯 [mint-nft] Processing NFT minting request');
+    
     const body = await request.json();
-
+    const { userAddress, title, description, danceStyle, choreographer, duration, analysisResults } = body;
+    
     // Validate required fields
-    const { to, tokenURI, mintPrice } = body;
-
-    if (!to || !tokenURI) {
-      return NextResponse.json(
-        { error: 'Missing required fields: to, tokenURI' },
+    if (!userAddress || !title || !danceStyle) {
+      const response = NextResponse.json(
+        { error: 'Missing required fields: userAddress, title, danceStyle' },
         { status: 400 }
       );
+      return addCorsHeaders(response);
     }
 
-    // Validate environment variables
-    const privateKey = process.env.STORY_PROTOCOL_PRIVATE_KEY;
-    const contractAddress = process.env.NEXT_PUBLIC_STORY_PROTOCOL_CONTRACT_ADDRESS;
-
-    if (!privateKey || privateKey === 'your_private_key_here_replace_this') {
-      return NextResponse.json(
-        {
-          error: 'Server configuration error',
-          message: 'STORY_PROTOCOL_PRIVATE_KEY not configured. Please add your private key to the .env file.'
+    console.log('📝 [mint-nft] Creating NFT metadata');
+    
+    // Create metadata for IPFS
+    const metadata = {
+      name: title,
+      description: description || `A ${danceStyle} dance performance`,
+      attributes: [
+        { trait_type: "Dance Style", value: danceStyle },
+        { trait_type: "Choreographer", value: choreographer || "Unknown" },
+        { trait_type: "Duration", value: duration || "0:00" },
+        { trait_type: "Platform", value: "MoveMint" },
+        { trait_type: "Total Moves", value: analysisResults?.totalMoves || 0 },
+        { trait_type: "Unique Sequences", value: analysisResults?.uniqueSequences || 0 },
+        { trait_type: "Confidence Score", value: analysisResults?.confidenceScore || 0 },
+        { trait_type: "Complexity", value: analysisResults?.complexity || "Beginner" }
+      ],
+      external_url: "https://movemint.app",
+      animation_url: "", // Could be added later for video content
+      created_at: new Date().toISOString(),
+      creator: userAddress,
+      dance_data: {
+        style: danceStyle,
+        choreographer: choreographer || "Unknown",
+        duration: duration || "0:00",
+        analysis: analysisResults || {
+          totalMoves: 0,
+          uniqueSequences: 0,
+          confidenceScore: 0,
+          complexity: "Beginner"
         },
-        { status: 500 }
-      );
-    }
-
-    if (!contractAddress) {
-      return NextResponse.json(
-        { error: 'NFT contract address not configured' },
-        { status: 500 }
-      );
-    }
-
-    // Create wallet from private key
-    const account = privateKeyToAccount(`0x${privateKey.replace(/^0x/, '')}` as `0x${string}`);
-
-    // Create clients
-    const publicClient = createPublicClient({
-      chain: storyProtocolTestnet,
-      transport: http(),
-    });
-
-    const walletClient = createWalletClient({
-      account,
-      chain: storyProtocolTestnet,
-      transport: http(),
-    });
-
-    console.log('Minting NFT with account:', account.address);
-    console.log('Target address:', to);
-    console.log('Contract:', contractAddress);
-
-    // Prepare mint transaction
-    const mintValue = mintPrice ? parseEther(mintPrice.toString()) : 0n;
-
-    // Execute mint transaction
-    const hash = await walletClient.writeContract({
-      address: contractAddress as `0x${string}`,
-      abi: NFT_CONTRACT_ABI,
-      functionName: 'mint',
-      args: [to as `0x${string}`, tokenURI],
-      value: mintValue,
-    });
-
-    console.log('Transaction submitted:', hash);
-
-    // Wait for transaction confirmation
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash,
-      confirmations: 1,
-    });
-
-    console.log('Transaction confirmed:', receipt);
-
-    // Extract token ID from logs (simplified - in production, parse logs properly)
-    // For now, generate a mock token ID
-    const tokenId = Date.now().toString();
-
-    const response = {
-      success: true,
-      transactionHash: hash,
-      tokenId,
-      blockNumber: Number(receipt.blockNumber),
-      gasUsed: receipt.gasUsed.toString(),
-      status: receipt.status,
-
-      nft: {
-        id: `nft_${tokenId}`,
-        tokenId,
-        owner: to,
-        tokenURI,
-        mintedAt: new Date().toISOString(),
-
-        blockchain: {
-          network: 'Story Protocol Testnet',
-          contractAddress,
-          tokenStandard: 'ERC-721',
-          transactionHash: hash,
-          blockNumber: Number(receipt.blockNumber),
-          gasUsed: receipt.gasUsed.toString()
-        },
-      },
-
-      links: {
-        transaction: `https://testnet.storyscan.xyz/tx/${hash}`,
-        nft: `https://testnet.storyscan.xyz/nft/${contractAddress}/${tokenId}`
+        platform: "MoveMint",
+        version: "1.0"
       }
     };
 
-    return NextResponse.json(response);
+    // Generate a mock IPFS hash for now (in production, upload to actual IPFS)
+    const metadataString = JSON.stringify(metadata, null, 2);
+    const mockIpfsHash = `Qm${Buffer.from(metadataString).toString('hex').slice(0, 44)}`;
+    
+    // Add the IPFS hash to metadata
+    const finalMetadata = {
+      ...metadata,
+      ipfsHash: mockIpfsHash
+    };
 
-  } catch (error: any) {
-    console.error('Mint NFT error:', error);
-
-    let errorMessage = 'Failed to mint NFT';
-    let statusCode = 500;
-
-    // Handle specific errors
-    if (error.message?.includes('insufficient funds')) {
-      errorMessage = 'Insufficient funds in minting wallet. Please fund the wallet address.';
-      statusCode = 402;
-    } else if (error.message?.includes('nonce')) {
-      errorMessage = 'Transaction nonce error. Please try again.';
-      statusCode = 409;
-    } else if (error.message?.includes('gas')) {
-      errorMessage = 'Gas estimation failed. The network may be congested.';
-      statusCode = 503;
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-
-    return NextResponse.json(
-      {
-        error: errorMessage,
-        details: error.shortMessage || error.message,
-        code: error.code
-      },
-      { status: statusCode }
+    // For now, we'll return the metadata and let the frontend handle IPFS upload
+    // In a production setup, you might want to upload to IPFS here
+    console.log('✅ [mint-nft] Metadata prepared successfully');
+    
+    const response = NextResponse.json({
+      success: true,
+      metadata: finalMetadata,
+      contractAddress: process.env.NEXT_PUBLIC_MOVEMINT_CONTRACT_ADDRESS || '0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073',
+      chainId: 5003,
+      message: 'Metadata prepared for Mantle NFT minting'
+    });
+    
+    return addCorsHeaders(response);
+    
+  } catch (error) {
+    console.error('❌ [mint-nft] Error:', error);
+    const response = NextResponse.json(
+      { error: 'Failed to prepare NFT metadata' },
+      { status: 500 }
     );
+    return addCorsHeaders(response);
   }
 }
 
 export async function GET() {
-  return NextResponse.json({
+  const response = NextResponse.json({
     endpoint: 'mint-nft',
     status: 'active',
-    description: 'Server-side minting of NFTs on Story Protocol blockchain',
+    description: 'Prepares dance metadata for NFT minting on Mantle',
     methods: ['POST'],
-    requiredFields: ['to', 'tokenURI'],
-    optionalFields: ['mintPrice'],
-    environment: {
-      privateKeyConfigured: !!process.env.STORY_PROTOCOL_PRIVATE_KEY &&
-                           process.env.STORY_PROTOCOL_PRIVATE_KEY !== 'your_private_key_here_replace_this',
-      contractAddress: process.env.NEXT_PUBLIC_STORY_PROTOCOL_CONTRACT_ADDRESS,
-      rpcUrl: process.env.NEXT_PUBLIC_STORY_PROTOCOL_RPC_URL
-    }
+    contract: process.env.NEXT_PUBLIC_MOVEMINT_CONTRACT_ADDRESS || '0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073',
+    network: 'Mantle Sepolia Testnet'
   });
+  return addCorsHeaders(response);
 }

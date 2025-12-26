@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useState, useEffect } from "react"
+import { ethers } from "ethers"
 
 // Extend Window interface for ethereum
 declare global {
@@ -41,13 +42,13 @@ export default function Mint() {
   const [isWalletConnected, setIsWalletConnected] = useState(false)
   const [walletChainId, setWalletChainId] = useState<number | null>(null)
   
-  // Story Protocol Testnet configuration (Aeneid)
-  const STORY_PROTOCOL_TESTNET = {
-    id: 1315, // Correct Aeneid testnet chain ID
-    name: 'Story Protocol Testnet (Aeneid)',
+  // Mantle Testnet configuration
+  const MANTLE_TESTNET = {
+    id: 5003, // Mantle Sepolia Testnet chain ID
+    name: 'Mantle Sepolia Testnet',
   }
   
-  const isCorrectNetwork = walletChainId === STORY_PROTOCOL_TESTNET.id
+  const isCorrectNetwork = walletChainId === MANTLE_TESTNET.id
 
   // Track IP ID changes for debugging
   useEffect(() => {
@@ -145,12 +146,12 @@ export default function Mint() {
     }
   }
 
-  const switchToStoryNetwork = async () => {
+  const switchToMantleNetwork = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: `0x${STORY_PROTOCOL_TESTNET.id.toString(16)}` }],
+          params: [{ chainId: `0x${MANTLE_TESTNET.id.toString(16)}` }],
         })
       } catch (switchError: any) {
         // If the chain hasn't been added to the user's wallet, add it
@@ -159,15 +160,15 @@ export default function Mint() {
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{
-                chainId: `0x${STORY_PROTOCOL_TESTNET.id.toString(16)}`,
-                chainName: 'Story Protocol Testnet',
+                chainId: `0x${MANTLE_TESTNET.id.toString(16)}`,
+                chainName: 'Mantle Sepolia Testnet',
                 nativeCurrency: {
-                  name: 'IP',
-                  symbol: 'IP',
+                  name: 'MNT',
+                  symbol: 'MNT',
                   decimals: 18,
                 },
-                rpcUrls: ['https://aeneid.storyrpc.io'],
-                blockExplorerUrls: ['https://aeneid.storyscan.io'],
+                rpcUrls: ['https://rpc.sepolia.mantle.xyz'],
+                blockExplorerUrls: ['https://explorer.sepolia.mantle.xyz'],
               }],
             })
           } catch (addError) {
@@ -178,135 +179,89 @@ export default function Mint() {
     }
   }
 
-  // Server-side Story Protocol minting with RPC fallbacks
-  const handleStoryProtocolMint = async (metadata: any, userAddress: string) => {
-    console.log('🔧 [DEBUG] Starting server-side Story Protocol minting')
+  // Direct Mantle NFT minting with actual contract interaction
+  const handleMantleNFTMint = async (metadata: any, userAddress: string) => {
+    console.log('🔧 [DEBUG] Starting Mantle NFT minting')
     console.log('📋 [DEBUG] Metadata available:', metadata)
     console.log('👤 [DEBUG] User address:', userAddress)
     
     try {
-      console.log('📡 [DEBUG] Calling /api/execute-story-mint endpoint...')
-      
-      // Call our server-side endpoint that handles RPC fallbacks
-      const response = await fetch('/api/execute-story-mint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userAddress: userAddress,
-          metadata: metadata
-        })
-      });
-      
-      console.log('📊 [DEBUG] Response status:', response.status, response.statusText)
-      
-      const result = await response.json();
-      console.log('📊 [DEBUG] Server response:', result);
-      
-      if (!response.ok || !result.success) {
-        console.error('❌ [DEBUG] Server response failed:', result.error)
-        throw new Error(result.error || 'Server-side minting failed');
+      if (typeof window === 'undefined' || !window.ethereum) {
+        throw new Error('Please install MetaMask to mint NFTs');
       }
+
+      // Create ethers provider and signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
       
-      // If we got a transaction, sign it with the working RPC
-      if (result.transaction) {
-        console.log('📝 [DEBUG] Got transaction from server, preparing to sign...')
-        console.log('🔗 [DEBUG] Using RPC endpoint:', result.rpcEndpoint);
-        console.log('🆔 [DEBUG] IP ID will be:', result.ipId);
-        console.log('📋 [DEBUG] Transaction details:', {
-          to: result.transaction.to,
-          from: result.transaction.from,
-          gas: result.transaction.gas,
-          gasPrice: result.transaction.gasPrice,
-          nonce: result.transaction.nonce,
-          dataLength: result.transaction.data?.length
-        });
-        
+      const contractAddress = '0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073';
+      const contractABI = [
+        "function mintDance(string title, string danceStyle, string choreographer, uint256 duration, string ipfsMetadataHash) returns (uint256)",
+        "event DanceMinted(uint256 indexed tokenId, address indexed creator, string title, string danceStyle, string ipfsMetadataHash)"
+      ];
+      
+      // Create contract instance
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      
+      // Prepare mint parameters
+      const mintParams = {
+        title: metadata.name || 'Dance NFT',
+        danceStyle: metadata.dance_data?.style || 'Unknown',
+        choreographer: metadata.dance_data?.choreographer || 'Unknown',
+        duration: parseInt(metadata.dance_data?.duration?.replace(/[^\d]/g, '') || '0') || 180,
+        ipfsMetadataHash: metadata.ipfsHash || `QmDefault${Date.now()}`
+      };
+      
+      console.log('📝 [DEBUG] Calling mintDance with params:', mintParams);
+      
+      // Call the mintDance function
+      const tx = await contract.mintDance(
+        mintParams.title,
+        mintParams.danceStyle,
+        mintParams.choreographer,
+        mintParams.duration,
+        mintParams.ipfsMetadataHash
+      );
+      
+      console.log('📤 [DEBUG] Transaction sent:', tx.hash);
+      
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
+      console.log('✅ [DEBUG] Transaction confirmed:', receipt);
+      
+      // Extract token ID from events
+      let tokenId = '0';
+      if (receipt.logs && receipt.logs.length > 0) {
         try {
-          console.log('🌐 [DEBUG] Ensuring correct network...')
-          // Ensure we're on the correct network
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: '0x523', // 1315 in hex
-              chainName: 'Story Protocol Testnet',
-              nativeCurrency: { name: 'IP', symbol: 'IP', decimals: 18 },
-              rpcUrls: [result.rpcEndpoint],
-              blockExplorerUrls: ['https://aeneid.storyscan.io'],
-            }],
-          });
-          console.log('✅ [DEBUG] Network setup complete')
-          
-          console.log('✍️ [DEBUG] Sending transaction to MetaMask...')
-          const txHash = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [result.transaction],
-          });
-          
-          console.log('✅ [DEBUG] Story Protocol transaction sent successfully:', txHash);
-          
-          // Set the IP ID from server response
-          if (result.ipId) {
-            setIpId(result.ipId);
-            console.log('🆔 [DEBUG] IP ID set from server:', result.ipId);
+          const iface = new ethers.Interface(contractABI);
+          for (const log of receipt.logs) {
+            try {
+              const parsed = iface.parseLog(log);
+              if (parsed && parsed.name === 'DanceMinted') {
+                tokenId = parsed.args[0].toString();
+                break;
+              }
+            } catch (e) {
+              // Skip logs that don't match our interface
+            }
           }
-          
-          return txHash;
-          
-        } catch (txError: any) {
-          console.error('❌ [DEBUG] Transaction signing failed:', txError);
-          console.error('❌ [DEBUG] Error code:', txError.code);
-          console.error('❌ [DEBUG] Error message:', txError.message);
-          throw txError;
+        } catch (e) {
+          console.log('Could not parse logs, using fallback token ID');
+          tokenId = `MANTLE-${Date.now()}`;
         }
-        
-      } else if (result.fallbackMode) {
-        console.log('📝 [DEBUG] Server returned fallback mode - RPC issues detected');
-        console.log('🔗 [DEBUG] IPFS Hash:', result.metadata?.ipfsHash);
-        console.log('🆔 [DEBUG] Fallback IP ID:', result.ipId);
-        
-        // RPC is down, but IPFS upload succeeded
-        console.log('📝 IPFS success mode - metadata permanently stored');
-        
-        // Set success state with IP ID from server
-        setTransactionHash('ipfs-success');
-        if (result.ipId) {
-          setIpId(result.ipId);
-          console.log('🆔 [DEBUG] Fallback IP ID set:', result.ipId);
-        } else {
-          // Fallback to old reference format if no IP ID provided
-          const ipfsReference = `IPFS-${result.metadata.ipfsHash.slice(-8)}-${Date.now().toString().slice(-6)}`;
-          setIpId(ipfsReference);
-          console.log('🆔 [DEBUG] Generated IPFS Reference ID:', ipfsReference);
-        }
-        
-        return 'ipfs-success';
-      } else {
-        console.warn('⚠️ [DEBUG] Unexpected server response - no transaction and no fallback mode');
-        console.log('📊 [DEBUG] Full result:', result);
-        throw new Error('Server returned unexpected response format');
       }
+      
+      return {
+        success: true,
+        transactionHash: receipt.hash,
+        tokenId,
+        contractAddress,
+        metadata
+      };
       
     } catch (error: any) {
-      console.error('❌ [DEBUG] Server-side Story Protocol mint failed:', error);
-      console.error('❌ [DEBUG] Error type:', typeof error);
-      console.error('❌ [DEBUG] Error stack:', error.stack);
-      
-      // Check if this is an RPC error but we have metadata
-      if (error.message?.includes('RPC endpoint') && metadata) {
-        console.log('🔄 [DEBUG] RPC failed but metadata exists, using IPFS-only success mode');
-        
-        // Create IPFS-only success
-        const ipfsReference = `IPFS-${metadata.ipfsHash.slice(-8)}-${Date.now().toString().slice(-6)}`;
-        console.log('🆔 [DEBUG] Emergency IPFS Reference ID:', ipfsReference);
-        
-        // Set success state
-        setTransactionHash('ipfs-success');
-        setIpId(ipfsReference);
-        
-        return 'ipfs-success';
-      }
-      
-      throw new Error(`Story Protocol minting failed: ${error.message}`);
+      console.error('❌ [DEBUG] Mantle NFT mint failed:', error);
+      throw new Error(`Mantle NFT minting failed: ${error.message}`);
     }
   }
 
@@ -317,7 +272,7 @@ export default function Mint() {
     }
 
     if (!isCorrectNetwork) {
-      setMintingError('Please switch to Story Protocol Testnet (Aeneid)')
+      setMintingError('Please switch to Mantle Sepolia Testnet')
       return
     }
 
@@ -339,7 +294,7 @@ export default function Mint() {
       console.log('📝 [DEBUG] Form data:', { title, danceStyle, choreographer, duration })
 
       // Step 1: Prepare transaction via our API
-      console.log('📡 [DEBUG] Calling /api/prepare-mint...')
+      console.log('📡 [DEBUG] Calling /api/mint-nft...')
       
       const requestBody = {
         userAddress: walletAddress,
@@ -358,7 +313,7 @@ export default function Mint() {
       
       console.log('📋 [DEBUG] Request body:', requestBody)
       
-      const response = await fetch('/api/prepare-mint', {
+      const response = await fetch('/api/mint-nft', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -366,181 +321,31 @@ export default function Mint() {
         body: JSON.stringify(requestBody),
       })
 
-      console.log('📊 [DEBUG] Prepare-mint response status:', response.status, response.statusText)
+      console.log('📊 [DEBUG] Mint-nft response status:', response.status, response.statusText)
       
       const result = await response.json()
-      console.log('📊 [DEBUG] Prepare-mint response:', result)
+      console.log('📊 [DEBUG] Mint-nft response:', result)
 
       if (!response.ok || !result.success) {
-        console.error('❌ [DEBUG] Prepare-mint failed:', result.error)
-        throw new Error(result.error?.message || 'Failed to prepare transaction')
+        console.error('❌ [DEBUG] Mint-nft failed:', result.error)
+        throw new Error(result.error?.message || 'Failed to prepare NFT metadata')
       }
 
-      console.log('✅ [DEBUG] Transaction prepared successfully')
+      console.log('✅ [DEBUG] NFT metadata prepared successfully')
       setMintResult(result)
 
-      // Check if there's a warning about transaction encoding
-      if (result.warning && result.warning.fallbackRequired) {
-        console.warn('⚠️ [DEBUG] Transaction encoding failed, using direct Story Protocol minting')
-        console.log('📝 [DEBUG] Metadata successfully uploaded to IPFS:', result.metadata?.ipfsHash)
-        
-        // Use direct Story Protocol minting with correct chain/RPC
-        const storyTxHash = await handleStoryProtocolMint(result.metadata, walletAddress)
-        setTransactionHash(storyTxHash)
-        console.log('✅ [DEBUG] Story Protocol minting successful:', storyTxHash)
-        console.log('🆔 [DEBUG] IP ID after Story Protocol mint:', ipId)
-        
-      } else if (result.transaction) {
-        console.log('📝 [DEBUG] Got transaction from prepare-mint, analyzing...')
-        console.log('📋 [DEBUG] Transaction details:', {
-          to: result.transaction.to,
-          data: result.transaction.data,
-          value: result.transaction.value,
-          gasEstimate: result.transaction.gasEstimate
-        })
-        
-        // Check if Surreal Base returned empty transaction data (known SDK issue)
-        if (!result.transaction.to || !result.transaction.data || result.transaction.data === '0x') {
-          console.warn('⚠️ [DEBUG] Surreal Base returned empty transaction data, using direct contract call')
-          
-          // Fallback: Use direct Story Protocol contract interaction
-          const storyTxHash = await handleStoryProtocolMint(result.metadata, walletAddress)
-          setTransactionHash(storyTxHash)
-          
-          console.log('✅ [DEBUG] Direct contract transaction sent:', storyTxHash)
-          console.log('🆔 [DEBUG] IP ID after direct contract call:', ipId)
-        } else {
-          console.log('📝 [DEBUG] Using Surreal Base transaction data...')
-          
-          // Use Surreal Base transaction if it has valid data
-          const txParams = {
-            from: walletAddress,
-            to: result.transaction.to,
-            data: result.transaction.data,
-            value: result.transaction.value === '0' ? '0x0' : `0x${parseInt(result.transaction.value).toString(16)}`,
-            gas: result.transaction.gasEstimate ? `0x${parseInt(result.transaction.gasEstimate).toString(16)}` : undefined
-          }
-          
-          console.log('📋 [DEBUG] Final transaction params:', txParams)
-          
-          let txHash: string | null = null
-          try {
-            console.log('✍️ [DEBUG] Sending transaction to MetaMask...')
-            const hash = await window.ethereum.request({
-              method: 'eth_sendTransaction',
-              params: [txParams],
-            })
-            txHash = hash as string
-            console.log('✅ [DEBUG] Transaction sent successfully:', txHash)
-            setTransactionHash(txHash)
-          } catch (txError: any) {
-            console.error('❌ [DEBUG] Transaction failed:', txError)
-            console.error('❌ [DEBUG] Error code:', txError.code)
-            console.error('❌ [DEBUG] Error message:', txError.message)
-            
-            // Check for user rejection
-            if (txError.code === 4001) {
-              throw new Error('Transaction was rejected by user')
-            }
-            
-            // Check for insufficient funds
-            if (txError.message?.includes('insufficient funds')) {
-              throw new Error('Insufficient funds for transaction. Please ensure you have enough ETH for gas fees.')
-            }
-            
-            // For any other error, try the Story Protocol approach as fallback
-            console.log('🔄 [DEBUG] Falling back to Story Protocol minting...')
-            const storyTxHash = await handleStoryProtocolMint(result.metadata, walletAddress)
-            if (storyTxHash) {
-              setTransactionHash(storyTxHash)
-              txHash = storyTxHash
-              console.log('✅ [DEBUG] Story Protocol fallback successful:', storyTxHash)
-            } else {
-              throw new Error('Story Protocol fallback also failed')
-            }
-          }
-          
-          // Only proceed with confirmation if we have a valid blockchain transaction hash
-          if (txHash && txHash !== 'ipfs-success') {
-            console.log('⏳ [DEBUG] Waiting for transaction confirmation...')
-            console.log('🔍 [DEBUG] Checking receipt for txHash:', txHash)
-            
-            // Poll for transaction receipt
-            let receipt = null
-            let attempts = 0
-            const maxAttempts = 60 // 5 minutes with 5-second intervals
-
-            while (!receipt && attempts < maxAttempts) {
-              try {
-                console.log(`🔄 [DEBUG] Attempt ${attempts + 1}/${maxAttempts} - Checking receipt...`)
-                receipt = await window.ethereum.request({
-                  method: 'eth_getTransactionReceipt',
-                  params: [txHash],
-                })
-                
-                if (!receipt) {
-                  console.log('⏳ [DEBUG] No receipt yet, waiting 5 seconds...')
-                  await new Promise(resolve => setTimeout(resolve, 5000)) // Wait 5 seconds
-                  attempts++
-                } else {
-                  console.log('✅ [DEBUG] Receipt found:', receipt)
-                }
-              } catch (error) {
-                console.warn('⚠️ [DEBUG] Error checking receipt:', error)
-                await new Promise(resolve => setTimeout(resolve, 5000))
-                attempts++
-              }
-            }
-
-            if (receipt) {
-              console.log('✅ [DEBUG] Transaction confirmed successfully')
-              
-              // IP ID should already be set from the server response
-              // Only generate if somehow missing (shouldn't happen)
-              if (!ipId) {
-                console.warn('⚠️ [DEBUG] IP ID missing after successful transaction, generating fallback');
-                const tokenIdFromTx = result.debug?.tokenId || Math.floor(Date.now() / 1000);
-                const contractAddress = result.transaction.to || '0xc32A8a0FF3beDDDa58393d022aF433e78739FAbc';
-                const generatedIpId = '0x' + contractAddress.slice(2).toLowerCase() + tokenIdFromTx.toString(16).padStart(24, '0');
-                setIpId(generatedIpId);
-                console.log('🆔 [DEBUG] Generated fallback IP ID from transaction:', generatedIpId);
-              } else {
-                console.log('✅ [DEBUG] IP ID already set from server response:', ipId);
-              }
-              console.log('🎉 [DEBUG] Dance NFT minted successfully with IP ID:', ipId)
-              console.log('📝 [DEBUG] Metadata stored on IPFS successfully')
-            } else {
-              console.warn('⚠️ [DEBUG] Transaction confirmation timeout')
-              throw new Error('Transaction confirmation timeout')
-            }
-          } else if (txHash === 'ipfs-success') {
-            console.log('✅ [DEBUG] IPFS-only success mode completed')
-            // IP ID should already be set by handleStoryProtocolMint
-          } else {
-            console.warn('⚠️ [DEBUG] No valid transaction hash received')
-            throw new Error('No valid transaction hash received')
-          }
-        }
-        
+      // Now perform the actual Mantle contract minting
+      console.log('🔗 [DEBUG] Calling Mantle contract...')
+      const mintResult = await handleMantleNFTMint(result.metadata, walletAddress);
+      
+      if (mintResult.success) {
+        setTransactionHash(mintResult.transactionHash);
+        setIpId(mintResult.tokenId);
+        console.log('🎉 [DEBUG] Mantle NFT minted successfully!');
+        console.log('📋 [DEBUG] Token ID:', mintResult.tokenId);
+        console.log('📝 [DEBUG] Transaction:', mintResult.transactionHash);
       } else {
-        console.warn('⚠️ [DEBUG] No transaction or warning in result')
-        console.log('📊 [DEBUG] Full result structure:', result)
-        
-        // Check if we have metadata for IPFS-only mode
-        if (result.metadata && result.metadata.ipfsHash) {
-          console.log('📝 [DEBUG] Found metadata, using IPFS-only success mode')
-          
-          // Generate proper IP ID for IPFS-only mode
-          const tokenId = Math.floor(Date.now() / 1000);
-          const contractAddress = '0xc32A8a0FF3beDDDa58393d022aF433e78739FAbc';
-          const ipfsIpId = '0x' + contractAddress.slice(2).toLowerCase() + tokenId.toString(16).padStart(24, '0');
-          
-          setTransactionHash('ipfs-success');
-          setIpId(ipfsIpId);
-          console.log('🆔 [DEBUG] Generated IPFS-only IP ID:', ipfsIpId);
-        } else {
-          throw new Error('No transaction data or metadata received from server')
-        }
+        throw new Error('Contract minting failed');
       }
 
     } catch (error: any) {
@@ -567,26 +372,26 @@ export default function Mint() {
               Mint Dance NFT
             </h1>
             <p className="text-gray-400 text-lg">
-              Create your dance IP asset on Story Protocol
+              Create your dance NFT on Mantle Network
             </p>
           </div>
 
           {/* Network Status */}
-          <div className="mb-8 bg-yellow-950/30 border border-yellow-900/50 rounded-xl p-6 animate-fade-in-up">
+          <div className="mb-8 bg-blue-950/30 border border-blue-900/50 rounded-xl p-6 animate-fade-in-up">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse"></div>
-              <span className="text-yellow-400 text-sm font-medium">Story Protocol Testnet Status</span>
+              <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse"></div>
+              <span className="text-blue-400 text-sm font-medium">Mantle Testnet Status</span>
             </div>
-            <p className="text-yellow-300/80 text-sm mb-4">
-              The testnet RPC may experience high load. If minting fails, use the official Surreal Base demo.
+            <p className="text-blue-300/80 text-sm mb-4">
+              Connected to Mantle Sepolia Testnet. Fast and low-cost NFT minting.
             </p>
             <a
-              href="https://surreal-base.vercel.app/demo"
+              href="https://explorer.sepolia.mantle.xyz"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center text-blue-400 hover:text-blue-300 text-sm font-medium transition duration-300"
             >
-              Surreal Base Demo (Backup) →
+              View on Mantle Explorer →
             </a>
           </div>
 
@@ -613,10 +418,10 @@ export default function Mint() {
                   {!isCorrectNetwork && (
                     <div className="bg-yellow-950/30 border border-yellow-900/50 rounded-lg p-4">
                       <p className="text-yellow-300/80 text-sm mb-3">
-                        Please switch to Story Protocol Testnet (Aeneid)
+                        Please switch to Mantle Sepolia Testnet
                       </p>
                       <Button 
-                        onClick={switchToStoryNetwork} 
+                        onClick={switchToMantleNetwork} 
                         size="sm" 
                         className="border-yellow-600/50 text-yellow-400 hover:bg-yellow-950/30 bg-transparent border transition duration-300"
                       >
@@ -628,7 +433,7 @@ export default function Mint() {
                   {isCorrectNetwork && (
                     <div className="bg-green-950/30 border border-green-900/50 rounded-lg p-4">
                       <p className="text-green-400 text-sm">
-                        ✅ Connected to {STORY_PROTOCOL_TESTNET.name}
+                        ✅ Connected to {MANTLE_TESTNET.name}
                       </p>
                     </div>
                   )}
@@ -644,7 +449,7 @@ export default function Mint() {
               <div className="mb-6">
                 <h3 className="text-lg font-medium text-white mb-2">Dance Details</h3>
                 <p className="text-gray-400 text-sm">
-                  Enter your dance information to create an IP asset
+                  Enter your dance information to create an NFT on Mantle
                 </p>
               </div>
               
@@ -770,8 +575,8 @@ export default function Mint() {
                   </p>
                   <p className="text-blue-300/80 text-sm mb-4">
                     {mintingError.includes('RPC endpoint') ? 
-                      'The Story Protocol testnet is experiencing high load. Your metadata was uploaded successfully. Use the official Surreal Base demo:' :
-                      'Use the official Surreal Base demo which has the same functionality:'
+                      'The Mantle testnet is experiencing high load. Your metadata was uploaded successfully. Try again or use the demo:' :
+                      'Use the demo which has the same functionality:'
                     }
                   </p>
                   <div className="flex flex-wrap gap-3">
@@ -814,7 +619,7 @@ export default function Mint() {
                     </svg>
                   </div>
                   <h3 className="text-xl font-medium text-green-400">
-                    {transactionHash === 'ipfs-success' ? 'Dance Data Stored Successfully! 🎉' : 'Minting Successful! 🎉'}
+                    {transactionHash === 'metadata-prepared' ? 'NFT Metadata Ready! 🎉' : 'Minting Successful! 🎉'}
                   </h3>
                 </div>
 
@@ -825,7 +630,7 @@ export default function Mint() {
                 })()}
 
                 <div className="space-y-6">
-                  {transactionHash !== 'ipfs-success' ? (
+                  {transactionHash !== 'metadata-prepared' ? (
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-3">
                         Transaction Hash:
@@ -834,31 +639,30 @@ export default function Mint() {
                         <code className="text-sm break-all text-green-400 font-mono">{transactionHash}</code>
                       </div>
                       <a
-                        href={`https://aeneid.storyscan.io/tx/${transactionHash}`}
+                        href={`https://explorer.sepolia.mantle.xyz/tx/${transactionHash}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center mt-3 text-blue-400 hover:text-blue-300 text-sm font-medium transition duration-300"
                       >
-                        View on Explorer →
+                        View on Mantle Explorer →
                       </a>
                     </div>
                   ) : (
                     <div className="bg-blue-950/30 border border-blue-900/50 rounded-lg p-4">
                       <p className="text-blue-400 text-sm font-medium mb-2">
-                        ✅ Dance NFT Created Successfully!
+                        ✅ NFT Metadata Prepared Successfully!
                       </p>
                       <p className="text-blue-300/80 text-sm mb-4">
-                        Your dance data has been permanently stored on IPFS (decentralized storage). 
-                        The Story Protocol blockchain is experiencing high traffic, but your NFT metadata 
-                        is safe and will be available forever.
+                        Your dance NFT metadata is ready for minting on Mantle. 
+                        You can now interact with the contract to mint your NFT.
                       </p>
                       <div className="bg-black border border-blue-800/30 rounded-lg p-3">
-                        <p className="text-blue-400 text-xs font-medium mb-2">What this means:</p>
+                        <p className="text-blue-400 text-xs font-medium mb-2">Contract Details:</p>
                         <ul className="text-blue-300/80 text-xs space-y-1">
-                          <li>• Your dance NFT metadata is permanently stored</li>
-                          <li>• You have a unique reference ID for your creation</li>
-                          <li>• The data is accessible via IPFS (decentralized web)</li>
-                          <li>• You can retry blockchain minting later when network is stable</li>
+                          <li>• Contract: 0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073</li>
+                          <li>• Network: Mantle Sepolia Testnet</li>
+                          <li>• Function: mintDance()</li>
+                          <li>• Your metadata is ready for IPFS upload</li>
                         </ul>
                       </div>
                     </div>
@@ -867,23 +671,23 @@ export default function Mint() {
                   {ipId && (
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-3">
-                        {ipId.startsWith('0x') ? 'Story Protocol IP Asset ID:' : 'Dance NFT Reference:'}
+                        {ipId.startsWith('0x') ? 'Mantle NFT Token ID:' : 'NFT Reference:'}
                       </label>
                       <div className="bg-green-950/30 border border-green-800/50 p-4 rounded-lg">
                         <code className="text-sm break-all text-green-400 font-mono">{ipId}</code>
                       </div>
                       <p className="text-sm text-gray-400 mt-3">
                         {ipId.startsWith('0x') 
-                          ? 'This is your unique Story Protocol IP Asset ID. Your dance is now a registered intellectual property on the blockchain.'
-                          : 'Your dance metadata has been permanently stored on IPFS and recorded on the blockchain.'
+                          ? 'This is your unique Mantle NFT token identifier. Your dance is now minted as an NFT on the blockchain.'
+                          : 'Your dance metadata has been prepared and is ready for minting on Mantle.'
                         }
                       </p>
                       {ipId.startsWith('0x') && (
                         <div className="mt-3 p-3 bg-blue-950/30 border border-blue-900/50 rounded-lg">
                           <p className="text-xs text-blue-300/80">
-                            <strong className="text-blue-400">What is an IP Asset ID?</strong><br/>
-                            This unique identifier represents your dance as intellectual property on Story Protocol. 
-                            It can be used for licensing, remixing, and monetization.
+                            <strong className="text-blue-400">What is a Token ID?</strong><br/>
+                            This unique identifier represents your dance NFT on the Mantle blockchain. 
+                            It can be traded, transferred, and used in DeFi applications.
                           </p>
                         </div>
                       )}

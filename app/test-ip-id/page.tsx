@@ -43,7 +43,7 @@ export default function TestIPID() {
       console.log('📊 [TEST] Prepare-mint result:', result)
       
       if (result.success && result.warning?.fallbackRequired) {
-        console.log('⚠️ [TEST] Using Story Protocol mint...')
+        console.log('⚠️ [TEST] Using Mantle mint...')
         
         // Step 2: Call execute-story-mint
         const executeResponse = await fetch('/api/execute-story-mint', {
@@ -143,14 +143,14 @@ export default function TestIPID() {
                 {ipId && (
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-3">
-                      {ipId.startsWith('0x') ? 'Story Protocol IP Asset ID:' : 'Dance NFT Reference:'}
+                      {ipId.startsWith('0x') ? 'Mantle NFT Token ID:' : 'Dance NFT Reference:'}
                     </label>
                     <div className="bg-green-950/30 border border-green-800/50 p-4 rounded-lg">
                       <code className="text-sm break-all text-green-400 font-mono">{ipId}</code>
                     </div>
                     <p className="text-sm text-gray-400 mt-3">
                       {ipId.startsWith('0x') 
-                        ? 'This is your unique Story Protocol IP Asset ID.'
+                        ? 'This is your unique Mantle NFT token ID.'
                         : 'Your dance metadata has been permanently stored.'
                       }
                     </p>

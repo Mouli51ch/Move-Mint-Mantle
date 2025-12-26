@@ -1,5 +1,5 @@
 /**
- * Environment configuration for Universal Minting Engine integration
+ * Environment configuration for Mantle NFT integration
  * Handles environment variables and configuration validation
  */
 
@@ -8,9 +8,9 @@ export interface EnvironmentConfig {
   apiUrl: string;
   apiKey?: string;
   
-  // Story Protocol Configuration
-  storyProtocolChainId: number;
-  storyProtocolRpcUrl: string;
+  // Mantle Configuration
+  mantleChainId: number;
+  mantleRpcUrl: string;
   
   // Application Configuration
   appEnv: 'development' | 'staging' | 'production';
@@ -18,7 +18,6 @@ export interface EnvironmentConfig {
   
   // Feature Flags
   enableVideoProcessing: boolean;
-  enableLicenseRemixer: boolean;
   enableNFTMinting: boolean;
   
   // Performance Configuration
@@ -33,7 +32,7 @@ export interface EnvironmentConfig {
 export function getEnvironmentConfig(): EnvironmentConfig {
   // Validate required environment variables
   const requiredVars = [
-    'NEXT_PUBLIC_UNIVERSAL_MINTING_ENGINE_API_URL',
+    'NEXT_PUBLIC_MOVEMINT_CONTRACT_ADDRESS',
   ];
 
   const missingVars = requiredVars.filter(varName => !process.env[varName]);
@@ -45,12 +44,12 @@ export function getEnvironmentConfig(): EnvironmentConfig {
 
   const config: EnvironmentConfig = {
     // API Configuration
-    apiUrl: process.env.NEXT_PUBLIC_UNIVERSAL_MINTING_ENGINE_API_URL || 'https://api.universalmintingengine.com',
-    apiKey: process.env.NEXT_PUBLIC_UNIVERSAL_MINTING_ENGINE_API_KEY,
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+    apiKey: process.env.NEXT_PUBLIC_API_KEY,
     
-    // Story Protocol Configuration
-    storyProtocolChainId: parseInt(process.env.NEXT_PUBLIC_STORY_PROTOCOL_CHAIN_ID || '1513'),
-    storyProtocolRpcUrl: process.env.NEXT_PUBLIC_STORY_PROTOCOL_RPC_URL || 'https://testnet.storyrpc.io',
+    // Mantle Configuration
+    mantleChainId: parseInt(process.env.NEXT_PUBLIC_MANTLE_CHAIN_ID || '5003'),
+    mantleRpcUrl: process.env.NEXT_PUBLIC_MANTLE_RPC_URL || 'https://rpc.sepolia.mantle.xyz',
     
     // Application Configuration
     appEnv: (process.env.NEXT_PUBLIC_APP_ENV as any) || 'development',
@@ -58,7 +57,6 @@ export function getEnvironmentConfig(): EnvironmentConfig {
     
     // Feature Flags (default to true for development)
     enableVideoProcessing: process.env.NEXT_PUBLIC_ENABLE_VIDEO_PROCESSING !== 'false',
-    enableLicenseRemixer: process.env.NEXT_PUBLIC_ENABLE_LICENSE_REMIXER !== 'false',
     enableNFTMinting: process.env.NEXT_PUBLIC_ENABLE_NFT_MINTING !== 'false',
     
     // Performance Configuration
@@ -86,16 +84,16 @@ function validateConfig(config: EnvironmentConfig): void {
     errors.push('Invalid API URL format');
   }
 
-  // Validate Story Protocol RPC URL
+  // Validate Mantle RPC URL
   try {
-    new URL(config.storyProtocolRpcUrl);
+    new URL(config.mantleRpcUrl);
   } catch {
-    errors.push('Invalid Story Protocol RPC URL format');
+    errors.push('Invalid Mantle RPC URL format');
   }
 
   // Validate chain ID
-  if (config.storyProtocolChainId <= 0) {
-    errors.push('Invalid Story Protocol chain ID');
+  if (config.mantleChainId <= 0) {
+    errors.push('Invalid Mantle chain ID');
   }
 
   // Validate timeout values
@@ -190,14 +188,13 @@ export function logConfiguration(): void {
 
   const config = getEnvironmentConfig();
   
-  console.group('🔧 Universal Minting Engine Configuration');
+  console.group('🔧 MoveMint Configuration');
   console.log('API URL:', config.apiUrl);
-  console.log('Story Protocol Chain ID:', config.storyProtocolChainId);
-  console.log('Story Protocol RPC:', config.storyProtocolRpcUrl);
+  console.log('Mantle Chain ID:', config.mantleChainId);
+  console.log('Mantle RPC:', config.mantleRpcUrl);
   console.log('Environment:', config.appEnv);
   console.log('Features:', {
     videoProcessing: config.enableVideoProcessing,
-    licenseRemixer: config.enableLicenseRemixer,
     nftMinting: config.enableNFTMinting,
   });
   console.log('Performance:', {

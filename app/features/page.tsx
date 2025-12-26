@@ -11,9 +11,9 @@ export default function Features() {
       icon: "🧠",
     },
     {
-      title: "Story Protocol Security",
+      title: "Mantle Network Security",
       description:
-        "All your NFTs are secured on Story Protocol with cryptographic proof of ownership and authenticity.",
+        "All your NFTs are secured on Mantle Network with cryptographic proof of ownership and authenticity.",
       items: ["Immutable records", "True ownership", "Transparent verification"],
       icon: "🔐",
     },

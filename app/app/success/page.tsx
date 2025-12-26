@@ -41,7 +41,7 @@ export default function Success() {
             </div>
             <h1 className="font-bold text-4xl text-white mb-2 animate-fade-in-down">Minting Complete!</h1>
             <p className="text-gray-400 mb-8 animate-fade-in-down" style={{ animationDelay: "0.1s" }}>
-              Your movement NFT has been successfully created on Story Protocol
+              Your movement NFT has been successfully created on Mantle Network
             </p>
           </div>
 
@@ -72,7 +72,7 @@ export default function Success() {
               </div>
               <div className="bg-black border border-green-900/30 p-3 rounded-lg hover:border-green-600/50 transition duration-300">
                 <p className="text-gray-500 text-xs mb-1 uppercase">Chain</p>
-                <p className="text-white text-sm">Story Protocol</p>
+                <p className="text-white text-sm">Mantle Network</p>
               </div>
             </div>
           </div>

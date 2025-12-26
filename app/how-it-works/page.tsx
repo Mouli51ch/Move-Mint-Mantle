@@ -30,7 +30,7 @@ export default function HowItWorks() {
     {
       number: "5",
       title: "Mint & Own",
-      description: "Mint your movement as an NFT on Story Protocol. It's now permanently yours.",
+      description: "Mint your movement as an NFT on Mantle Network. It's now permanently yours.",
       icon: "🔗",
     },
   ]

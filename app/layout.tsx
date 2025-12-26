@@ -18,7 +18,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "MoveMint - NFT Your Fitness",
-  description: "Record your fitness movements and mint them as NFTs",
+  description: "Record your fitness movements and mint them as NFTs on Mantle Network",
   generator: "v0.app",
   icons: {
     icon: [

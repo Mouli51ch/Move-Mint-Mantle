@@ -40,10 +40,10 @@ export default function Home() {
         </div>
 
         <div className="relative max-w-5xl mx-auto text-center">
-          {/* Story Protocol Badge */}
+          {/* Mantle Badge */}
           <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-4 py-2 mb-6">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
-            <span className="text-green-300 text-sm font-medium">Powered by Story Protocol</span>
+            <span className="text-green-300 text-sm font-medium">Powered by Mantle Network</span>
             <div className="w-2 h-2 bg-green-400 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
           </div>
           
@@ -52,13 +52,13 @@ export default function Home() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-300">soar</span>
           </h1>
           <p className="text-gray-400 text-lg mb-4 max-w-2xl mx-auto text-balance">
-            The app to track all your moves on Story Protocol. Make smart moves only.
+            The app to track all your moves on Mantle Network. Make smart moves only.
           </p>
           
-          {/* Story Protocol Features */}
+          {/* Mantle Features */}
           <div className="flex flex-wrap justify-center gap-2 mb-8">
             <span className="bg-green-500/10 border border-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm">
-              IP Protection
+              Fast & Cheap
             </span>
             <span className="bg-green-500/10 border border-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm">
               Instant Minting
@@ -119,14 +119,14 @@ export default function Home() {
       {/* Enhanced Analytics Dashboard */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-black to-green-950/5">
         <div className="max-w-7xl mx-auto">
-          {/* Story Protocol Analytics Header */}
+          {/* Mantle Analytics Header */}
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-6 py-3 mb-4">
-              <span className="text-green-300 font-medium">Story Protocol Analytics</span>
+              <span className="text-green-300 font-medium">Mantle Network Analytics</span>
             </div>
             <h2 className="text-3xl font-bold text-white mb-4">Real-time Platform Insights</h2>
             <p className="text-gray-400 max-w-2xl mx-auto">
-              Live data from the Story Protocol ecosystem showing the power of decentralized IP protection
+              Live data from the Mantle ecosystem showing fast and affordable NFT minting
             </p>
           </div>
 
@@ -214,7 +214,7 @@ export default function Home() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
                 <div className="w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
-                Live Story Protocol Activity
+                Live Mantle Network Activity
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -231,7 +231,7 @@ export default function Home() {
                 
                 <div className="space-y-3">
                   <div className="text-sm text-gray-400">IP Registrations</div>
-                  {['Dance Style Protected', 'Choreography Secured', 'Move Pattern Locked'].map((item, i) => (
+                  {['NFT Minted on Mantle', 'Dance Style Secured', 'Move Pattern Locked'].map((item, i) => (
                     <div key={i} className="flex items-center gap-3 p-2 bg-green-500/5 rounded-lg animate-fade-in" style={{animationDelay: `${i * 0.2 + 0.1}s`}}>
                       <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                       <span className="text-sm text-gray-300">{item}</span>
@@ -259,15 +259,15 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-6 py-3 mb-6">
-              <span className="text-green-300 font-medium">Story Protocol Features</span>
+              <span className="text-green-300 font-medium">Mantle Network Features</span>
             </div>
             <h2 className="font-medium text-4xl text-white mb-4">Everything is in one place</h2>
             <p className="text-gray-400 text-center max-w-2xl mx-auto">
-              Our smart dashboard powered by Story Protocol shows you everything you need to manage all your move NFTs with full IP protection.
+              Our smart dashboard powered by Mantle Network shows you everything you need to manage all your move NFTs with fast and affordable transactions.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* IP Protection Card */}
+            {/* Fast Minting Card */}
             <Card className="group relative bg-gradient-to-br from-green-950/50 to-black border-green-500/20 hover:border-green-400/40 transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-r from-green-600/10 to-green-400/5 rounded-xl blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100"></div>
               <CardContent className="relative p-6">
@@ -277,17 +277,17 @@ export default function Home() {
                       <div className="w-2 h-2 bg-green-400 rounded"></div>
                     </div>
                   </div>
-                  <h3 className="text-lg font-medium text-white">IP Protection</h3>
+                  <h3 className="text-lg font-medium text-white">Fast Minting</h3>
                 </div>
                 <p className="text-gray-400 text-sm mb-6">
-                  Every move is protected by Story Protocol's decentralized IP infrastructure.
+                  Every NFT is minted instantly on Mantle's high-performance blockchain infrastructure.
                 </p>
                 <div className="bg-green-950/20 rounded-lg p-4 border border-green-900/20">
                   <div className="text-2xl font-bold text-green-400">847K</div>
-                  <p className="text-gray-500 text-xs mt-1">Protected IP assets</p>
+                  <p className="text-gray-500 text-xs mt-1">NFTs minted</p>
                   <div className="flex items-center gap-2 mt-2">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-green-300">Live protection active</span>
+                    <span className="text-xs text-green-300">Fast minting active</span>
                   </div>
                 </div>
               </CardContent>
@@ -391,7 +391,7 @@ export default function Home() {
         </div>
         <div className="relative max-w-3xl mx-auto text-center">
           <h2 className="font-medium text-4xl text-white mb-4">Ready to get started?</h2>
-          <p className="text-gray-400 mb-8">Join thousands of creators minting their moves as NFTs on Story Protocol</p>
+          <p className="text-gray-400 mb-8">Join thousands of creators minting their moves as NFTs on Mantle Network</p>
           <Button 
             onClick={() => {
               console.log("Start Free clicked")

@@ -1,19 +1,19 @@
 # MoveMint - Dance NFT Minting Platform
 
-A Web3 application for minting dance performances as IP assets on Story Protocol blockchain.
+A Web3 application for minting dance performances as NFTs on Mantle Network blockchain.
 
 ## 🎯 Overview
 
-MoveMint allows dancers and choreographers to mint their dance performances as NFTs with intellectual property protection on Story Protocol. The application provides a simplified, user-friendly interface for creating dance IP assets with proper metadata storage on IPFS.
+MoveMint allows dancers and choreographers to mint their dance performances as NFTs on Mantle Network. The application provides a simplified, user-friendly interface for creating dance NFTs with proper metadata storage on IPFS.
 
 ## ✨ Features
 
 - **Simple Minting Interface**: Clean, focused UI for dance metadata input
-- **Story Protocol Integration**: Real IP asset creation on Story Protocol testnet
+- **Mantle Network Integration**: Fast and affordable NFT creation on Mantle Sepolia Testnet
 - **Wallet Integration**: MetaMask and Coinbase Wallet support with automatic network switching
-- **IPFS Storage**: Metadata stored on IPFS via Surreal Base Universal Minting Engine
-- **Error Handling**: Robust error handling with fallback solutions
-- **No Mock Data**: Everything uses real blockchain integration
+- **IPFS Storage**: Metadata stored on IPFS for decentralized access
+- **Error Handling**: Robust error handling with clear user feedback
+- **Real Blockchain Integration**: Everything uses actual Mantle blockchain
 
 ## 🚀 Quick Start
 
@@ -48,13 +48,14 @@ Visit `http://localhost:3000` to access the application.
 Create a `.env` file with the following variables:
 
 ```env
-SURREAL_BASE_API_URL=https://surreal-base.vercel.app
-NEXT_PUBLIC_SURREAL_BASE_API_URL=https://surreal-base.vercel.app
+NEXT_PUBLIC_MOVEMINT_CONTRACT_ADDRESS=0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073
+NEXT_PUBLIC_MANTLE_CHAIN_ID=5003
+NEXT_PUBLIC_MANTLE_RPC_URL=https://rpc.sepolia.mantle.xyz
 ```
 
 ## 🎭 How to Mint a Dance NFT
 
-1. **Connect Wallet**: Click "Connect Wallet" and connect to Story Protocol Testnet (Aeneid)
+1. **Connect Wallet**: Click "Connect Wallet" and connect to Mantle Sepolia Testnet
 2. **Fill Details**: Enter your dance information:
    - Title (required)
    - Description
@@ -62,14 +63,15 @@ NEXT_PUBLIC_SURREAL_BASE_API_URL=https://surreal-base.vercel.app
    - Choreographer name
    - Duration
 3. **Mint**: Click "Mint Dance NFT" and sign the transaction
-4. **Get IP Asset ID**: Receive your unique IP Asset ID on Story Protocol
+4. **Get Token ID**: Receive your unique NFT Token ID on Mantle
 
 ## 🌐 Network Configuration
 
-- **Network**: Story Protocol Testnet (Aeneid)
-- **Chain ID**: 1513
-- **RPC URL**: https://aeneid.storyrpc.io
-- **Explorer**: https://aeneid.storyscan.io
+- **Network**: Mantle Sepolia Testnet
+- **Chain ID**: 5003
+- **RPC URL**: https://rpc.sepolia.mantle.xyz
+- **Explorer**: https://explorer.sepolia.mantle.xyz
+- **Contract**: 0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073
 
 ## 🏗️ Architecture
 
@@ -80,13 +82,13 @@ NEXT_PUBLIC_SURREAL_BASE_API_URL=https://surreal-base.vercel.app
 - **UI Components**: Custom components with shadcn/ui
 
 ### Backend Integration
-- **API**: RESTful API endpoints for minting preparation
-- **Blockchain**: Story Protocol via Surreal Base Universal Minting Engine
-- **Storage**: IPFS via Pinata for metadata storage
+- **API**: RESTful API endpoints for metadata preparation
+- **Blockchain**: Mantle Network via direct contract interaction
+- **Storage**: IPFS for metadata storage
 
 ### Data Flow
 ```
-User Input → /api/prepare-mint → Surreal Base → Story Protocol → IP Asset
+User Input → /api/mint-nft → IPFS → Mantle Contract → NFT Token
 ```
 
 ## 📁 Project Structure

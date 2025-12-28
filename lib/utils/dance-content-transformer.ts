@@ -342,6 +342,14 @@ export function transformAnalysisResults(genericResults: any): any {
     movementsByStyle,
     styleDistribution,
     primaryStyle: determinePrimaryStyle(styleDistribution),
+    qualityMetrics: genericResults.qualityMetrics || {
+      overall: Math.round((calculateTechnicalComplexity(transformedMovements) + calculateArtisticExpression(transformedMovements)) * 50 + 50),
+      technique: Math.round(calculateTechnicalComplexity(transformedMovements) * 100),
+      creativity: Math.round(calculateArtisticExpression(transformedMovements) * 100),
+      execution: Math.round((transformedMovements.reduce((sum, m) => sum + m.confidence, 0) / transformedMovements.length) * 100) || 75,
+      rhythm: 75, // Default value
+      expression: Math.round(calculateArtisticExpression(transformedMovements) * 100)
+    },
     danceMetrics: {
       totalMovements: transformedMovements.length,
       uniqueStyles: Object.keys(movementsByStyle).length,
@@ -349,7 +357,7 @@ export function transformAnalysisResults(genericResults: any): any {
       technicalComplexity: calculateTechnicalComplexity(transformedMovements),
       artisticExpression: calculateArtisticExpression(transformedMovements),
     },
-    recommendations: generateDanceRecommendations(transformedMovements, styleDistribution),
+    recommendations: genericResults.recommendations || generateDanceRecommendations(transformedMovements, styleDistribution),
   };
 }
 

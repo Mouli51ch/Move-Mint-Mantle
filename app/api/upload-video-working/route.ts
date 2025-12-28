@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseFormDataSafely } from '@/lib/utils/formdata-parser';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
 
 // CORS and Security Headers
 function addCorsHeaders(response: NextResponse) {
@@ -29,17 +26,19 @@ export async function OPTIONS(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🎥 [upload-video-working] POST request received');
+  console.log('  - Content-Type:', request.headers.get('content-type'));
+  console.log('  - Content-Length:', request.headers.get('content-length'));
+  console.log('  - URL:', request.url);
+  console.log('  - Method:', request.method);
+  console.log('  - Headers:', Object.fromEntries(request.headers.entries()));
+  
   try {
-    console.log('🎥 [upload-video] POST request received');
-    console.log('  - Content-Type:', request.headers.get('content-type'));
-    console.log('  - Content-Length:', request.headers.get('content-length'));
-    console.log('  - URL:', request.url);
-    console.log('  - Method:', request.method);
     
     // Check content type
     const contentType = request.headers.get('content-type');
     if (!contentType || !contentType.includes('multipart/form-data')) {
-      console.error('❌ [upload-video] Invalid content type:', contentType);
+      console.error('❌ [upload-video-working] Invalid content type:', contentType);
       const response = NextResponse.json(
         { error: 'Invalid content type. Expected multipart/form-data' },
         { status: 400 }
@@ -47,16 +46,16 @@ export async function POST(request: NextRequest) {
       return addCorsHeaders(response);
     }
 
-    console.log('📦 [upload-video] Parsing FormData with custom parser...');
+    console.log('📦 [upload-video-working] Parsing FormData with custom parser...');
     
     let parsedData;
     try {
       parsedData = await parseFormDataSafely(request);
-      console.log('✅ [upload-video] FormData parsed successfully');
-      console.log('📋 [upload-video] Fields:', Object.keys(parsedData.fields));
-      console.log('📋 [upload-video] Files:', Object.keys(parsedData.files));
+      console.log('✅ [upload-video-working] FormData parsed successfully');
+      console.log('📋 [upload-video-working] Fields:', Object.keys(parsedData.fields));
+      console.log('📋 [upload-video-working] Files:', Object.keys(parsedData.files));
     } catch (parseError) {
-      console.error('❌ [upload-video] Custom FormData parsing failed:', parseError);
+      console.error('❌ [upload-video-working] Custom FormData parsing failed:', parseError);
       const response = NextResponse.json(
         { error: 'Failed to parse video upload. Please try with a smaller file or different format.' },
         { status: 400 }
@@ -75,7 +74,7 @@ export async function POST(request: NextRequest) {
       return addCorsHeaders(response);
     }
 
-    console.log('📹 [upload-video] Video file details:');
+    console.log('📹 [upload-video-working] Video file details:');
     console.log(`  - Name: ${videoFile.name}`);
     console.log(`  - Type: ${videoFile.type}`);
     console.log(`  - Size: ${videoFile.size} bytes`);
@@ -112,76 +111,20 @@ export async function POST(request: NextRequest) {
 
     // Generate video ID
     const videoId = `video_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-    console.log('🆔 [upload-video] Generated video ID:', videoId);
+    console.log('🆔 [upload-video-working] Generated video ID:', videoId);
     
-    try {
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = join(process.cwd(), 'uploads');
-      console.log('📁 [upload-video] Uploads directory path:', uploadsDir);
-      
-      if (!existsSync(uploadsDir)) {
-        console.log('📁 [upload-video] Creating uploads directory...');
-        await mkdir(uploadsDir, { recursive: true });
-        console.log('✅ [upload-video] Created uploads directory');
-      }
-      
-      // Get file extension from original filename or content type
-      const getFileExtension = (filename: string, contentType: string) => {
-        if (filename && filename.includes('.')) {
-          return filename.split('.').pop()?.toLowerCase();
-        }
-        // Fallback to content type mapping
-        const typeMap: { [key: string]: string } = {
-          'video/mp4': 'mp4',
-          'video/webm': 'webm',
-          'video/quicktime': 'mov',
-          'video/x-msvideo': 'avi'
-        };
-        return typeMap[contentType] || 'mp4';
-      };
-      
-      const fileExtension = getFileExtension(videoFile.name, videoFile.type);
-      const fileName = `${videoId}.${fileExtension}`;
-      const filePath = join(uploadsDir, fileName);
-      
-      console.log('💾 [upload-video] Saving video file to:', filePath);
-      
-      // Convert File to Buffer and save
-      const arrayBuffer = await videoFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      
-      console.log('💾 [upload-video] Writing file buffer (size:', buffer.length, 'bytes)');
-      await writeFile(filePath, buffer);
-      console.log('✅ [upload-video] Video file saved successfully');
-      
-      // Store metadata alongside video
-      const metadataPath = join(uploadsDir, `${videoId}.json`);
-      const videoMetadata = {
-        videoId,
-        originalName: videoFile.name,
-        fileName,
-        fileSize: videoFile.size,
-        contentType: videoFile.type,
-        uploadedAt: new Date().toISOString(),
-        metadata,
-        filePath: fileName // Store relative path for security
-      };
-      
-      console.log('📝 [upload-video] Saving metadata to:', metadataPath);
-      await writeFile(metadataPath, JSON.stringify(videoMetadata, null, 2));
-      console.log('✅ [upload-video] Metadata saved successfully');
-      
-    } catch (fileError) {
-      console.error('❌ [upload-video] File system error:', fileError);
-      console.error('  - Error type:', fileError?.constructor?.name);
-      console.error('  - Error message:', fileError instanceof Error ? fileError.message : 'Unknown');
-      console.error('  - Error stack:', fileError instanceof Error ? fileError.stack : 'No stack');
-      
-      // Continue without file storage - return success but note the issue
-      console.log('⚠️ [upload-video] Continuing without file storage due to filesystem error');
-    }
+    // For now, just process the upload without file storage
+    // This ensures the upload flow works while we debug file system issues
+    console.log('📝 [upload-video-working] Processing upload (no file storage for now)...');
     
-    console.log('📝 [upload-video] Creating response...');
+    // Convert to base64 for temporary storage in session
+    const arrayBuffer = await videoFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Video = `data:${videoFile.type};base64,${buffer.toString('base64')}`;
+    
+    console.log('✅ [upload-video-working] Video converted to base64 for session storage');
+    
+    console.log('📝 [upload-video-working] Creating response...');
     // Return successful response
     const response = {
       success: true,
@@ -198,23 +141,23 @@ export async function POST(request: NextRequest) {
         { name: 'analysis', status: 'pending', percentage: 0 },
         { name: 'finalization', status: 'pending', percentage: 0 }
       ],
-      // Add note about file storage status
-      fileStorageEnabled: true, // Will be set based on actual storage success
-      note: 'Video uploaded and ready for analysis'
+      // Include base64 video data for immediate use
+      videoData: base64Video,
+      note: 'Video uploaded successfully and ready for analysis'
     };
 
-    console.log('✅ [upload-video] Returning successful response');
+    console.log('✅ [upload-video-working] Returning successful response');
     const jsonResponse = NextResponse.json(response);
     return addCorsHeaders(jsonResponse);
     
   } catch (error) {
-    console.error('❌ [upload-video] Error occurred:', error);
+    console.error('❌ [upload-video-working] Error occurred:', error);
     console.error('  - Error type:', error?.constructor?.name);
     console.error('  - Error message:', error instanceof Error ? error.message : 'Unknown');
     console.error('  - Error stack:', error instanceof Error ? error.stack : 'No stack');
     
     const response = NextResponse.json(
-      { error: 'Failed to upload video' },
+      { error: 'Failed to upload video', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
     return addCorsHeaders(response);
@@ -222,13 +165,15 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  console.log('🎥 [upload-video-working] GET request received - endpoint is reachable');
   const response = NextResponse.json({
-    endpoint: 'upload-video',
+    endpoint: 'upload-video-working',
     status: 'active',
-    description: 'Uploads video files for dance analysis',
+    description: 'Uploads video files for dance analysis (working version)',
     methods: ['POST'],
     maxFileSize: '500MB',
-    supportedFormats: ['MP4', 'WebM', 'MOV', 'AVI']
+    supportedFormats: ['MP4', 'WebM', 'MOV', 'AVI'],
+    timestamp: new Date().toISOString()
   });
   return addCorsHeaders(response);
 }

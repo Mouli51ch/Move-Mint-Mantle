@@ -62,3 +62,6 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 bun.lock
+
+# Uploaded videos and user content
+uploads/

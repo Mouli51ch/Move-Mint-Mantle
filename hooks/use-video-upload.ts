@@ -130,25 +130,35 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
       console.log('  - File:', selectedFile.name, selectedFile.type, selectedFile.size);
       console.log('  - Metadata:', JSON.stringify(metadata, null, 2));
       
-      const response: VideoUploadResponse = await universalMintingEngineService.uploadVideo(
-        selectedFile,
-        metadata
-      );
-      
-      console.log('✅ [useVideoUpload] Upload response received:', response);
+      let response: VideoUploadResponse;
+      try {
+        response = await universalMintingEngineService.uploadVideo(
+          selectedFile,
+          metadata
+        );
+        console.log('✅ [useVideoUpload] Upload service response received:', response);
+      } catch (serviceError) {
+        console.error('❌ [useVideoUpload] Upload service failed:', serviceError);
+        console.error('  - Error type:', serviceError?.constructor?.name);
+        console.error('  - Error message:', serviceError instanceof Error ? serviceError.message : 'Unknown');
+        console.error('  - Error details:', serviceError);
+        throw serviceError;
+      }
 
       // Update progress based on response
       if (response.success) {
         progressTracker.updateSubStage(uploadOperationId, 'Upload to Server', 'completed', 100);
-        progressTracker.updateSubStage(uploadOperationId, 'Frame Extraction', 'active');
+        progressTracker.updateSubStage(uploadOperationId, 'Frame Extraction', 'completed', 100);
+        progressTracker.updateSubStage(uploadOperationId, 'Pose Detection', 'completed', 100);
+        progressTracker.updateSubStage(uploadOperationId, 'Analysis Complete', 'completed', 100);
 
         // Save video upload session
         saveVideoUpload({
           videoId: response.videoId,
           fileName: selectedFile.name,
           fileSize: selectedFile.size,
-          uploadProgress: 30,
-          uploadStatus: 'processing',
+          uploadProgress: 100,
+          uploadStatus: 'completed',
           uploadedAt: Date.now(),
           metadata: {
             title: metadata.title,
@@ -157,40 +167,61 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
           },
         });
 
-        // ALSO save in the format expected by results page
+        // ALSO save in the format expected by results page with REAL analysis data
         const recordingData = {
-          poseFrames: 0, // Will be updated when analysis completes
-          duration: 0, // Will be updated when analysis completes
+          poseFrames: response.poseData?.length || 0, // Real pose frame count
+          duration: response.duration || 0, // Real video duration
           recordedAt: new Date().toISOString(),
-          videoData: null, // We don't store the actual video data for uploaded files
+          videoData: response.videoData || null, // Base64 video data if available
           videoId: response.videoId,
-          fileName: selectedFile.name,
-          fileSize: selectedFile.size,
+          fileName: response.fileName || selectedFile.name,
+          fileSize: response.fileSize || selectedFile.size,
           uploadedAt: Date.now(),
           metadata: metadata,
-          poseKeypoints: [] // Will be populated when analysis completes
+          poseKeypoints: response.poseData || [], // Real pose data for analysis
+          
+          // Add real analysis results
+          analysisComplete: response.analysisComplete || false,
+          analysisResults: response.detectedMovements ? {
+            detectedMovements: response.detectedMovements,
+            qualityMetrics: response.qualityMetrics,
+            recommendations: response.recommendations,
+            poseData: response.poseData,
+            duration: response.duration,
+            videoId: response.videoId
+          } : null,
+          
+          // Add complete NFT metadata (works with or without IPFS)
+          nftMetadata: response.nftMetadata || null,
+          
+          // Add IPFS data for minting (may be null if upload failed)
+          ipfsData: response.ipfsData || null
         };
         
-        console.log('💾 [useVideoUpload] Saving recording data for results page:', recordingData);
+        console.log('💾 [useVideoUpload] Saving recording data with REAL analysis and metadata:', {
+          ...recordingData,
+          videoData: recordingData.videoData ? `base64 data (${recordingData.videoData.length} chars)` : 'not available',
+          poseFrames: recordingData.poseFrames,
+          analysisComplete: recordingData.analysisComplete,
+          movementsDetected: recordingData.analysisResults?.detectedMovements?.length || 0,
+          nftMetadataReady: !!recordingData.nftMetadata,
+          ipfsUploadSuccess: recordingData.ipfsData?.uploadSuccess || false
+        });
         sessionStorage.setItem('moveMintRecording', JSON.stringify(recordingData));
 
         progressTracker.updateProgress(uploadOperationId, {
-          stage: 'processing',
-          percentage: 35,
-          message: 'Extracting frames from video...',
-          estimatedTimeRemaining: response.estimatedProcessingTime,
+          stage: 'complete',
+          percentage: 100,
+          message: 'Video analysis complete!',
           processedItems: 1,
         });
-
-        // Start polling for processing status
-        await pollProcessingStatus(response.videoId, uploadOperationId);
 
         // Update session to completed
         updateUploadProgress(response.videoId, 100, 'completed');
         updateWorkflowStep('analysis');
 
         // Complete the upload
-        progressTracker.complete(uploadOperationId, 'Video analysis complete!');
+        progressTracker.complete(uploadOperationId, `Video analysis complete! Detected ${response.detectedMovements?.length || 0} movements from ${response.poseData?.length || 0} pose frames.`);
         
         options.onUploadComplete?.(response.videoId);
       } else {

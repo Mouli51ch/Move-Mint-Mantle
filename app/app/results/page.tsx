@@ -97,20 +97,50 @@ export default function Results() {
       
       // If we have a video file but no pose data, this is an uploaded video
       if (data.videoId && !data.poseKeypoints?.length) {
-        console.log('📹 [Results] Found uploaded video without pose analysis, fetching analysis...');
+        console.log('📹 [Results] Found uploaded video, checking for analysis results...');
         setVideoId(data.videoId);
         setCurrentVideoId(data.videoId);
-        fetchAnalysisResults(data.videoId);
+        
+        // Check if we already have analysis results from upload
+        if (data.analysisComplete && data.analysisResults) {
+          console.log('✅ [Results] Using real analysis results from upload!');
+          console.log('  - Movements:', data.analysisResults.detectedMovements?.length || 0);
+          console.log('  - Pose frames:', data.analysisResults.poseData?.length || 0);
+          console.log('  - Quality:', data.analysisResults.qualityMetrics?.overall || 'N/A');
+          
+          setAnalysisResults(data.analysisResults);
+          setLoadingAnalysis(false);
+          updateWorkflowStep('results');
+        } else {
+          console.log('⚠️ [Results] No analysis results from upload, this should not happen with real analysis');
+          setAnalysisError('Analysis results not found. Please try uploading the video again.');
+          setLoadingAnalysis(false);
+        }
+        
+        // Try to fetch the video file for uploaded videos
+        tryFetchUploadedVideo(data.videoId);
         return;
       }
       
       // If we have video data (recorded video), set it
       if (data.videoData) setVideoUrl(data.videoData)
 
-      // REAL ANALYSIS: Use recorded pose data
+      // REAL ANALYSIS: Use recorded pose data OR uploaded analysis results
       if (data.poseKeypoints?.length > 0) {
         console.log('🎭 Found REAL pose data! Analyzing...')
         analyzeRealPoseData(data)
+        return
+      } else if (data.analysisComplete && data.analysisResults) {
+        console.log('🎭 Found REAL uploaded video analysis results!')
+        console.log('  - Movements:', data.analysisResults.detectedMovements?.length || 0)
+        console.log('  - Pose frames:', data.analysisResults.poseData?.length || 0)
+        console.log('  - Quality:', data.analysisResults.qualityMetrics?.overall || 'N/A')
+        
+        setVideoId(data.videoId);
+        setCurrentVideoId(data.videoId);
+        setAnalysisResults(data.analysisResults);
+        setLoadingAnalysis(false);
+        updateWorkflowStep('results');
         return
       }
     }
@@ -135,6 +165,31 @@ export default function Results() {
     }
   }, [])
 
+  // Try to fetch uploaded video file
+  const tryFetchUploadedVideo = async (videoId: string) => {
+    try {
+      console.log('🎬 [Results] Attempting to fetch uploaded video:', videoId);
+      const response = await fetch(`/api/video/${videoId}`);
+      if (response.ok) {
+        // Check if response is actually a video file (not JSON error)
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.startsWith('video/')) {
+          // If the API returns the video file, create a blob URL
+          const blob = await response.blob();
+          const videoUrl = URL.createObjectURL(blob);
+          setVideoUrl(videoUrl);
+          console.log('✅ [Results] Successfully fetched and set uploaded video URL');
+        } else {
+          console.log('ℹ️ [Results] Response is not a video file, using placeholder');
+        }
+      } else {
+        console.log('ℹ️ [Results] Uploaded video not available for streaming (404), using placeholder');
+      }
+    } catch (error) {
+      console.log('ℹ️ [Results] Could not fetch uploaded video, using placeholder:', error);
+    }
+  }
+
   // Auto-animate pose frames when no video is playing
   useEffect(() => {
     if (!analysisResults?.poseData || analysisResults.poseData.length === 0) {
@@ -146,86 +201,37 @@ export default function Results() {
       return // Let video control the frame index
     }
 
-    // Auto-cycle through frames
+    // Auto-cycle through frames at a slower rate to reduce performance impact
     const interval = setInterval(() => {
       setCurrentPoseIndex(prev => {
         const nextIndex = (prev + 1) % analysisResults.poseData.length
-        console.log('🔄 Auto-cycling to pose frame:', nextIndex)
+        // Only log occasionally to reduce console spam
+        if (nextIndex % 10 === 0) {
+          console.log('🔄 Auto-cycling pose frames:', nextIndex, '/', analysisResults.poseData.length)
+        }
         return nextIndex
       })
-    }, 100) // 10 FPS
+    }, 500) // Reduced to 2 FPS for better performance
 
     return () => clearInterval(interval)
   }, [analysisResults?.poseData, videoRef.current?.paused])
 
-  // Fetch analysis results from Universal Minting Engine API
+  // This function should not be needed anymore since we have real analysis from upload
+  // Keeping it only for error handling in case something goes wrong
   const fetchAnalysisResults = async (videoId: string) => {
-    setLoadingAnalysis(true)
-    setAnalysisError(null)
-
-    try {
-      const rawResults = await universalMintingEngineService.getAnalysisResults(videoId)
-
-      // Transform generic movement data to dance-specific terminology
-      const transformedResults = transformAnalysisResults(rawResults)
-
-      // Ensure qualityMetrics exists with proper structure
-      if (!transformedResults.qualityMetrics) {
-        transformedResults.qualityMetrics = {
-          overall: rawResults.metadata?.qualityScore ? Math.round(rawResults.metadata.qualityScore * 100) : 75,
-          technique: 80,
-          creativity: 75,
-          execution: 85,
-          rhythm: 78,
-          expression: 72
-        };
-      }
-
-      // Ensure qualityMetrics.overall exists
-      if (typeof transformedResults.qualityMetrics.overall === 'undefined') {
-        transformedResults.qualityMetrics.overall = 75; // Default value
-      }
-
-      setAnalysisResults(transformedResults)
-
-      // Save transformed analysis results to session
-      saveAnalysis({
-        videoId,
-        analysisResults: transformedResults,
-        analysisCompletedAt: Date.now(),
-        qualityScore: transformedResults.qualityMetrics.overall,
-      })
-
-      // Update workflow step
-      updateWorkflowStep('results')
-
-      // Update local recording data with API results
-      if (transformedResults.poseData && transformedResults.poseData.length > 0) {
-        const updatedRecordingData = {
-          ...recordingData,
-          poseFrames: transformedResults.poseData.length,
-          duration: transformedResults.duration,
-          poseKeypoints: transformedResults.poseData.map(frame => ({
-            keypoints: frame.keypoints,
-            confidence: frame.confidence
-          }))
-        }
-        setRecordingData(updatedRecordingData)
-        sessionStorage.setItem('moveMintRecording', JSON.stringify(updatedRecordingData))
-      }
-    } catch (error) {
-      console.error('Failed to fetch analysis results:', error)
-      setAnalysisError(error instanceof Error ? error.message : 'Failed to load analysis results')
-    } finally {
-      setLoadingAnalysis(false)
-    }
+    console.error('❌ [Results] fetchAnalysisResults called - this should not happen with real analysis!');
+    console.error('  - Video ID:', videoId);
+    console.error('  - This means the upload did not provide real analysis results');
+    
+    setLoadingAnalysis(false);
+    setAnalysisError('Real analysis results not found. The upload process may have failed to generate analysis data. Please try uploading the video again.');
   }
 
-  // Retry analysis fetch
+  // Retry analysis - should not be needed with real analysis
   const retryAnalysis = () => {
-    if (videoId) {
-      fetchAnalysisResults(videoId)
-    }
+    console.log('🔄 [Results] Retry analysis requested - redirecting to upload page');
+    // Instead of retrying the mock API, redirect to upload page
+    window.location.href = '/app/upload';
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -415,7 +421,10 @@ export default function Results() {
       setCurrentPoseIndex(clampedIndex)
 
       // The DancePoseVisualization component will handle drawing the skeleton
-      console.log('🎬 Video time update: frame', clampedIndex, 'of', totalFrames, 'at time', currentTime.toFixed(2));
+      // Only log occasionally to reduce console spam
+      if (clampedIndex % 30 === 0) {
+        console.log('🎬 Video time update: frame', clampedIndex, 'of', totalFrames, 'at time', currentTime.toFixed(2));
+      }
     }
 
     video.addEventListener('timeupdate', handleTimeUpdate)
@@ -526,6 +535,31 @@ export default function Results() {
                 >
                   Your browser does not support video playback.
                 </video>
+              ) : recordingData?.videoId ? (
+                // Uploaded video - show placeholder with file info
+                <div className="text-center p-8">
+                  <svg
+                    className="w-16 h-16 text-green-500/50 mx-auto mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1}
+                      d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m0 0V1a1 1 0 011 1v2m0 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V4m0 0V2a1 1 0 011-1h8a1 1 0 011 1v2m5 10l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                  <p className="text-green-400 font-medium mb-2">Uploaded Video</p>
+                  <p className="text-gray-400 text-sm mb-2">{recordingData.fileName}</p>
+                  <p className="text-gray-500 text-xs">
+                    {recordingData.fileSize ? `${Math.round(recordingData.fileSize / 1024 / 1024)}MB` : 'Processing...'}
+                  </p>
+                  <div className="mt-4 text-xs text-gray-500">
+                    Video analysis in progress...
+                  </div>
+                </div>
               ) : (
                 <div className="text-center p-8">
                   <svg
@@ -629,7 +663,7 @@ export default function Results() {
                 movements={analysisResults.detectedMovements}
                 qualityMetrics={analysisResults.qualityMetrics}
                 recommendations={analysisResults.recommendations}
-                onReanalyze={videoId ? () => fetchAnalysisResults(videoId) : undefined}
+                onReanalyze={() => window.location.href = '/app/upload'}
               />
             ) : (
               // Fallback to original table for local data

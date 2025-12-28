@@ -41,21 +41,14 @@ export function DancePoseVisualization({
   // Enhanced skeleton drawing for dance visualization
   const drawDanceSkeleton = (canvas: HTMLCanvasElement, poseFrame: PoseFrame) => {
     if (!canvas || !poseFrame || !poseFrame.keypoints) {
-      console.log('🎨 [drawDanceSkeleton] Missing data:', {
-        canvas: !!canvas,
-        poseFrame: !!poseFrame,
-        keypoints: poseFrame?.keypoints?.length || 0
-      })
+      // Only log errors, not every missing frame
       return
     }
 
     const ctx = canvas.getContext('2d', { willReadFrequently: false })
     if (!ctx) {
-      console.log('🎨 [drawDanceSkeleton] No canvas context')
       return
     }
-
-    console.log('🎨 [drawDanceSkeleton] Drawing skeleton with', poseFrame.keypoints.length, 'keypoints')
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -129,17 +122,20 @@ export function DancePoseVisualization({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !poseFrames || poseFrames.length === 0) {
-      console.log('🎨 [DancePoseVisualization] No canvas or pose frames:', {
-        canvas: !!canvas,
-        poseFrames: poseFrames?.length || 0
-      })
+      // Only log once when no data is available
+      if (poseFrames?.length === 0) {
+        console.log('🎨 [DancePoseVisualization] No pose frames available')
+      }
       return
     }
 
     const frameIndex = Math.max(0, Math.min(currentFrameIndex, poseFrames.length - 1))
     const currentFrame = poseFrames[frameIndex]
     
-    console.log('🎨 [DancePoseVisualization] Drawing frame:', frameIndex, 'keypoints:', currentFrame?.keypoints?.length)
+    // Only log occasionally to reduce console spam
+    if (frameIndex % 15 === 0) {
+      console.log('🎨 [DancePoseVisualization] Drawing frame:', frameIndex, 'keypoints:', currentFrame?.keypoints?.length)
+    }
     
     if (currentFrame) {
       drawDanceSkeleton(canvas, currentFrame)

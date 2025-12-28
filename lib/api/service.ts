@@ -46,39 +46,65 @@ export class UniversalMintingEngineService {
     }
 
     console.log('🌐 [UniversalMintingEngineService] Making API request...');
-    console.log('  - Endpoint: /api/upload-video');
+    console.log('  - Endpoint: /api/upload-video-simple');
     console.log('  - Method: POST');
     console.log('  - Timeout: 120000ms');
 
-    const response = await apiClient.request<VideoUploadResponse>({
-      endpoint: '/api/upload-video',
-      method: 'POST',
-      body: formData,
-      headers: {
-        // Remove Content-Type to let browser set it with boundary for FormData
-      },
-      timeout: 120000, // 2 minutes for video upload
-    });
+    let response;
+    try {
+      response = await apiClient.request<VideoUploadResponse>({
+        endpoint: '/api/upload-video-simple',
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Remove Content-Type to let browser set it with boundary for FormData
+        },
+        timeout: 120000, // 2 minutes for video upload
+      });
+      
+      console.log('📨 [UniversalMintingEngineService] Raw API response received:', response);
+    } catch (apiError) {
+      console.error('❌ [UniversalMintingEngineService] API request failed:', apiError);
+      console.error('  - Error type:', apiError?.constructor?.name);
+      console.error('  - Error message:', apiError instanceof Error ? apiError.message : 'Unknown');
+      console.error('  - Error details:', apiError);
+      throw apiError;
+    }
     
     console.log('📨 [UniversalMintingEngineService] API response received:', response);
 
     if (!response.success || !response.data) {
-      console.error('❌ [UniversalMintingEngineService] Upload failed');
+      console.error('❌ [UniversalMintingEngineService] Upload failed - API client error');
       console.error('  - Response success:', response.success);
       console.error('  - Response data:', response.data);
       console.error('  - Response error:', response.error);
       
       throw new APIError(
         'UPLOAD_FAILED',
-        'Video upload failed',
+        'Video upload failed - API client error',
         response.error,
         true,
         500
       );
     }
 
-    console.log('✅ [UniversalMintingEngineService] Upload successful, returning data:', response.data);
-    return response.data;
+    // Check the actual upload response inside the data wrapper
+    const uploadResponse = response.data;
+    if (!uploadResponse.success) {
+      console.error('❌ [UniversalMintingEngineService] Upload failed - upload endpoint error');
+      console.error('  - Upload response:', uploadResponse);
+      
+      throw new APIError(
+        'UPLOAD_FAILED',
+        'Video upload failed - upload endpoint error',
+        uploadResponse.error || 'Unknown upload error',
+        true,
+        500
+      );
+    }
+
+    console.log('✅ [UniversalMintingEngineService] Upload successful, returning data:', uploadResponse);
+    return uploadResponse;
   }
 
   /**

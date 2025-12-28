@@ -87,12 +87,21 @@ export default function Dashboard() {
     setError(null)
 
     try {
-      // Load NFTs with detailed metadata
-      const nftsResponse = await universalMintingEngineService.getNFTs(
-        connection.address,
-        currentPage,
-        itemsPerPage
-      )
+      console.log('🏠 [Dashboard] Loading real NFT collection for:', connection.address);
+      
+      // First, try to load from the API
+      let nftsResponse;
+      try {
+        nftsResponse = await universalMintingEngineService.getNFTs(
+          connection.address,
+          currentPage,
+          itemsPerPage
+        )
+        console.log('✅ [Dashboard] API response received:', nftsResponse);
+      } catch (apiError) {
+        console.log('⚠️ [Dashboard] API not available, loading from local session data');
+        nftsResponse = await loadFromSessionData();
+      }
 
       // Transform API response to our NFT format
       const transformedNFTs: DanceNFT[] = nftsResponse.nfts.map(nft => ({
@@ -106,7 +115,7 @@ export default function Dashboard() {
         danceStyle: nft.metadata.danceStyle || [],
         movements: nft.metadata.analysisData?.detectedMovements?.map(m => m.name).join(', ') || 'Unknown movements',
         created: new Date(nft.mintedAt).toISOString().split('T')[0],
-        views: Math.floor(Math.random() * 1000), // Placeholder - would come from analytics API
+        views: nft.metadata.views || 0, // Use real view count if available
         price: nft.metadata.attributes?.find(attr => attr.trait_type === 'Price')?.value?.toString() || 'Free',
         difficulty: nft.metadata.difficulty || 'Beginner',
         duration: nft.metadata.analysisData?.duration || 0,
@@ -122,103 +131,123 @@ export default function Dashboard() {
       // Calculate collection statistics
       calculateStats(transformedNFTs, nftsResponse.total)
 
+      console.log('✅ [Dashboard] Loaded', transformedNFTs.length, 'real NFTs');
+
     } catch (error) {
-      console.error('Failed to load NFT collection:', error)
-      setError('Failed to load your NFT collection. Please try again.')
+      console.error('❌ [Dashboard] Failed to load NFT collection:', error)
+      setError('Failed to load your NFT collection. This could be because you haven\'t minted any NFTs yet, or there\'s a connection issue.')
       
-      // Load mock data as fallback for development
-      loadMockData()
+      // Try to load from session data as final fallback
+      try {
+        const sessionData = await loadFromSessionData();
+        if (sessionData.nfts.length > 0) {
+          console.log('✅ [Dashboard] Loaded from session data as fallback');
+          const transformedNFTs: DanceNFT[] = sessionData.nfts.map(nft => ({
+            id: `session-${nft.tokenId}`,
+            contractAddress: nft.contractAddress,
+            tokenId: nft.tokenId,
+            title: nft.metadata.name || 'Untitled Dance NFT',
+            description: nft.metadata.description || '',
+            image: nft.metadata.image || '',
+            animation_url: nft.metadata.animation_url,
+            danceStyle: nft.metadata.danceStyle || [],
+            movements: nft.metadata.analysisData?.detectedMovements?.map(m => m.name).join(', ') || 'Unknown movements',
+            created: new Date(nft.mintedAt).toISOString().split('T')[0],
+            views: nft.metadata.views || 0,
+            price: nft.metadata.attributes?.find(attr => attr.trait_type === 'Price')?.value?.toString() || 'Free',
+            difficulty: nft.metadata.difficulty || 'Beginner',
+            duration: nft.metadata.analysisData?.duration || 0,
+            choreographer: nft.metadata.choreographer,
+            attributes: nft.metadata.attributes || [],
+            transactionHash: nft.transactionHash,
+            ipfsHash: nft.metadata.ipfsHash
+          }));
+          
+          setNfts(transformedNFTs);
+          calculateStats(transformedNFTs, transformedNFTs.length);
+          setError(null); // Clear error since we found session data
+        } else {
+          // No session data either - user hasn't created any NFTs
+          setNfts([]);
+          calculateStats([], 0);
+        }
+      } catch (sessionError) {
+        console.error('❌ [Dashboard] Failed to load session data:', sessionError);
+        setNfts([]);
+        calculateStats([], 0);
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
-  const loadMockData = () => {
-    const mockNFTs: DanceNFT[] = [
-      {
-        id: "mock-1",
-        contractAddress: "0x1234567890123456789012345678901234567890",
-        tokenId: "1",
-        title: "Evening Ballet Routine",
-        description: "A graceful evening ballet performance featuring classical movements",
-        image: "",
-        danceStyle: ["Ballet", "Classical"],
-        movements: "Pirouette, Grand Jeté, Arabesque",
-        created: "2025-01-15",
-        views: 324,
-        price: "2.5 IP",
-        difficulty: "Advanced",
-        duration: 180,
-        attributes: [
-          { trait_type: "Duration", value: 180, display_type: "number" },
-          { trait_type: "Movements Detected", value: 3, display_type: "number" },
-          { trait_type: "Dance Styles", value: "Ballet, Classical" }
-        ]
-      },
-      {
-        id: "mock-2",
-        contractAddress: "0x1234567890123456789012345678901234567890",
-        tokenId: "2",
-        title: "Contemporary Dance",
-        description: "Modern contemporary dance with fluid movements",
-        image: "",
-        danceStyle: ["Contemporary", "Modern"],
-        movements: "Chassé, Plié, Tendu",
-        created: "2025-01-12",
-        views: 512,
-        price: "1.8 IP",
-        difficulty: "Intermediate",
-        duration: 150,
-        attributes: [
-          { trait_type: "Duration", value: 150, display_type: "number" },
-          { trait_type: "Movements Detected", value: 3, display_type: "number" },
-          { trait_type: "Dance Styles", value: "Contemporary, Modern" }
-        ]
-      },
-      {
-        id: "mock-3",
-        contractAddress: "0x1234567890123456789012345678901234567890",
-        tokenId: "3",
-        title: "Hip-Hop Freestyle",
-        description: "Energetic hip-hop freestyle with street dance elements",
-        image: "",
-        danceStyle: ["Hip-Hop", "Street"],
-        movements: "Pop, Lock, Wave",
-        created: "2025-01-10",
-        views: 189,
-        price: "Free",
-        difficulty: "Beginner",
-        duration: 120,
-        attributes: [
-          { trait_type: "Duration", value: 120, display_type: "number" },
-          { trait_type: "Movements Detected", value: 3, display_type: "number" },
-          { trait_type: "Dance Styles", value: "Hip-Hop, Street" }
-        ]
-      },
-      {
-        id: "mock-4",
-        contractAddress: "0x1234567890123456789012345678901234567890",
-        tokenId: "4",
-        title: "Jazz Dance Combo",
-        description: "Classic jazz dance combination with syncopated rhythms",
-        image: "",
-        danceStyle: ["Jazz", "Musical Theatre"],
-        movements: "Kick Ball Change, Jazz Square",
-        created: "2025-01-08",
-        views: 267,
-        price: "1.2 IP",
-        difficulty: "Intermediate",
-        duration: 90,
-        attributes: [
-          { trait_type: "Duration", value: 90, display_type: "number" },
-          { trait_type: "Movements Detected", value: 2, display_type: "number" },
-          { trait_type: "Dance Styles", value: "Jazz, Musical Theatre" }
-        ]
+  // Load NFT data from session storage (user's uploads and mints)
+  const loadFromSessionData = async () => {
+    console.log('📱 [Dashboard] Loading from session data...');
+    
+    const nfts = [];
+    
+    // Check for recent uploads/analysis
+    const recordingData = sessionStorage.getItem('moveMintRecording');
+    if (recordingData) {
+      try {
+        const data = JSON.parse(recordingData);
+        if (data.analysisResults && data.videoId) {
+          console.log('📹 [Dashboard] Found recent upload with analysis:', data.videoId);
+          
+          nfts.push({
+            contractAddress: '0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073', // Mantle contract
+            tokenId: data.videoId,
+            mintedAt: data.recordedAt || new Date().toISOString(),
+            transactionHash: null, // Not minted yet
+            metadata: {
+              name: data.metadata?.title || 'Dance Performance',
+              description: data.metadata?.description || 'AI-analyzed dance performance',
+              image: '', // Could add thumbnail generation
+              animation_url: data.videoData || '',
+              danceStyle: data.metadata?.tags || ['Contemporary'],
+              difficulty: 'Intermediate',
+              choreographer: connection?.address,
+              views: 0,
+              analysisData: {
+                detectedMovements: data.analysisResults.detectedMovements || [],
+                duration: data.analysisResults.duration || data.duration || 0,
+                qualityMetrics: data.analysisResults.qualityMetrics || {}
+              },
+              attributes: [
+                { trait_type: 'Duration', value: data.analysisResults.duration || data.duration || 0, display_type: 'number' },
+                { trait_type: 'Movements Detected', value: data.analysisResults.detectedMovements?.length || 0, display_type: 'number' },
+                { trait_type: 'Quality Score', value: data.analysisResults.qualityMetrics?.overall || 0, display_type: 'number' },
+                { trait_type: 'Analysis Type', value: 'Real-time AI Analysis' }
+              ]
+            }
+          });
+        }
+      } catch (error) {
+        console.warn('⚠️ [Dashboard] Failed to parse recording data:', error);
       }
-    ]
-
-    setNfts(mockNFTs)
-    calculateStats(mockNFTs, mockNFTs.length)
+    }
+    
+    // Check for minted NFTs in session (from successful mints)
+    const mintedNFTs = sessionStorage.getItem('mintedNFTs');
+    if (mintedNFTs) {
+      try {
+        const minted = JSON.parse(mintedNFTs);
+        if (Array.isArray(minted)) {
+          console.log('🎭 [Dashboard] Found', minted.length, 'minted NFTs in session');
+          nfts.push(...minted);
+        }
+      } catch (error) {
+        console.warn('⚠️ [Dashboard] Failed to parse minted NFTs:', error);
+      }
+    }
+    
+    console.log('📊 [Dashboard] Session data loaded:', nfts.length, 'NFTs');
+    
+    return {
+      nfts,
+      total: nfts.length
+    };
   }
 
   const calculateStats = (nftList: DanceNFT[], total: number) => {

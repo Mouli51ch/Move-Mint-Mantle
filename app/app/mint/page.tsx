@@ -27,6 +27,11 @@ export default function Mint() {
   const [transactionHash, setTransactionHash] = useState<string | null>(null)
   const [ipId, setIpId] = useState<string | null>(null)
   const [mintResult, setMintResult] = useState<any>(null)
+  
+  // IPFS integration state
+  const [hasStoredIPFSData, setHasStoredIPFSData] = useState(false)
+  const [storedIPFSData, setStoredIPFSData] = useState<any>(null)
+  const [useStoredData, setUseStoredData] = useState(false)
 
   // Debug: Log current state on every render
   console.log('🎨 [RENDER] Mint page state:', { 
@@ -72,6 +77,49 @@ export default function Mint() {
   useEffect(() => {
     checkWalletConnection()
     
+    // Check for stored analysis data from recent upload
+    const storedRecording = sessionStorage.getItem('moveMintRecording');
+    if (storedRecording) {
+      try {
+        const recordingData = JSON.parse(storedRecording);
+        
+        // Check for complete NFT metadata (works with or without IPFS)
+        if (recordingData.nftMetadata) {
+          console.log('🎯 [Mint] Found complete NFT metadata:', recordingData.nftMetadata);
+          setStoredIPFSData(recordingData);
+          setHasStoredIPFSData(true);
+          
+          // Automatically enable direct minting when metadata is available
+          setUseStoredData(true);
+          console.log('✅ [Mint] Auto-enabled direct metadata minting');
+          
+          // Pre-fill form with stored metadata
+          if (recordingData.metadata) {
+            setTitle(recordingData.metadata.title || '');
+            setDescription(recordingData.metadata.description || '');
+            setDanceStyle(recordingData.metadata.tags?.join(', ') || '');
+          }
+        } else if (recordingData.ipfsData?.metadataIpfsHash) {
+          // Fallback to old IPFS-only structure
+          console.log('🎯 [Mint] Found IPFS data (legacy):', recordingData.ipfsData);
+          setStoredIPFSData(recordingData);
+          setHasStoredIPFSData(true);
+          setUseStoredData(true);
+          console.log('✅ [Mint] Auto-enabled IPFS minting (legacy)');
+        } else {
+          console.log('ℹ️ [Mint] No metadata found, using traditional form minting');
+          // Still pre-fill form with available data
+          if (recordingData.metadata) {
+            setTitle(recordingData.metadata.title || '');
+            setDescription(recordingData.metadata.description || '');
+            setDanceStyle(recordingData.metadata.tags?.join(', ') || '');
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to parse stored recording data:', error);
+      }
+    }
+    
     // Recover state from sessionStorage if available
     const savedIpId = sessionStorage.getItem('lastMintedIpId');
     const savedTxHash = sessionStorage.getItem('lastTransactionHash');
@@ -100,11 +148,11 @@ export default function Mint() {
         setWalletChainId(parseInt(chainId, 16))
       }
 
-      window.ethereum.on('accountsChanged', handleAccountsChanged)
-      window.ethereum.on('chainChanged', handleChainChanged)
+      window.ethereum!.on('accountsChanged', handleAccountsChanged)
+      window.ethereum!.on('chainChanged', handleChainChanged)
 
       return () => {
-        if (window.ethereum.removeListener) {
+        if (window.ethereum?.removeListener) {
           window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
           window.ethereum.removeListener('chainChanged', handleChainChanged)
         }
@@ -191,7 +239,7 @@ export default function Mint() {
       }
 
       // Create ethers provider and signer
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider(window.ethereum!);
       const signer = await provider.getSigner();
       
       const contractAddress = '0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073';
@@ -265,6 +313,165 @@ export default function Mint() {
     }
   }
 
+  // Direct metadata minting using stored analysis data
+  const handleDirectIPFSMint = async () => {
+    if (!storedIPFSData?.nftMetadata && !storedIPFSData?.ipfsData?.metadataIpfsHash) {
+      setMintingError('No metadata found for minting');
+      return;
+    }
+
+    setIsLoading(true);
+    setMintingError(null);
+    setTransactionHash(null);
+    setIpId(null);
+
+    try {
+      console.log('🎯 [DirectMint] Starting direct metadata mint...');
+      
+      // Use complete NFT metadata if available, otherwise fall back to IPFS hash
+      const useCompleteMetadata = !!storedIPFSData.nftMetadata;
+      const ipfsHash = storedIPFSData.ipfsData?.metadataIpfsHash || 'local-metadata';
+      
+      console.log('📋 [DirectMint] Using metadata type:', useCompleteMetadata ? 'complete' : 'IPFS hash');
+      console.log('📋 [DirectMint] IPFS hash:', ipfsHash);
+
+      // Create ethers provider and signer
+      const provider = new ethers.BrowserProvider(window.ethereum!);
+      const signer = await provider.getSigner();
+      
+      const contractAddress = '0x2CD0f925B6d2DDEA0D3FE3e0F6b3Ba5d87e17073';
+      const contractABI = [
+        "function mintDance(string title, string danceStyle, string choreographer, uint256 duration, string ipfsMetadataHash) returns (uint256)",
+        "event DanceMinted(uint256 indexed tokenId, address indexed creator, string title, string danceStyle, string ipfsMetadataHash)"
+      ];
+      
+      // Create contract instance
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      
+      // Use stored metadata for minting
+      const metadata = storedIPFSData.metadata || {};
+      const analysisResults = storedIPFSData.analysisResults || {};
+      const nftMetadata = storedIPFSData.nftMetadata || {};
+      
+      const mintParams = {
+        title: nftMetadata.name || metadata.title || title || 'Dance NFT',
+        danceStyle: metadata.tags?.join(', ') || danceStyle || 'Contemporary',
+        choreographer: metadata.choreographer || choreographer || walletAddress?.slice(0, 8) || 'Unknown',
+        duration: storedIPFSData.duration || parseInt(duration?.replace(/[^\d]/g, '') || '0') || 180,
+        ipfsMetadataHash: ipfsHash
+      };
+      
+      console.log('📝 [DirectMint] Calling mintDance with params:', mintParams);
+      
+      // Call the mintDance function with metadata
+      const tx = await contract.mintDance(
+        mintParams.title,
+        mintParams.danceStyle,
+        mintParams.choreographer,
+        mintParams.duration,
+        mintParams.ipfsMetadataHash
+      );
+      
+      console.log('📤 [DirectMint] Transaction sent:', tx.hash);
+      
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
+      console.log('✅ [DirectMint] Transaction confirmed:', receipt);
+      
+      // Extract token ID from events
+      let tokenId = '0';
+      if (receipt.logs && receipt.logs.length > 0) {
+        try {
+          const iface = new ethers.Interface(contractABI);
+          for (const log of receipt.logs) {
+            try {
+              const parsed = iface.parseLog(log);
+              if (parsed && parsed.name === 'DanceMinted') {
+                tokenId = parsed.args[0].toString();
+                break;
+              }
+            } catch (e) {
+              // Skip logs that don't match our interface
+            }
+          }
+        } catch (e) {
+          console.log('Could not parse logs, using fallback token ID');
+          tokenId = `MANTLE-${Date.now()}`;
+        }
+      }
+      
+      setTransactionHash(receipt.hash);
+      setIpId(tokenId);
+      
+      console.log('🎉 [DirectMint] Direct metadata mint successful!');
+      console.log('📋 [DirectMint] Token ID:', tokenId);
+      console.log('📝 [DirectMint] Transaction:', receipt.hash);
+      
+      // Save successful mint to session storage for dashboard
+      const mintResult = {
+        success: true,
+        transactionHash: receipt.hash,
+        tokenId,
+        contractAddress
+      };
+      
+      const resultMetadata = {
+        name: mintParams.title,
+        description: nftMetadata.description || `AI-analyzed dance performance with ${analysisResults.detectedMovements?.length || 0} detected movements`,
+        image: nftMetadata.image || '',
+        animation_url: nftMetadata.animation_url || '',
+        analysisData: nftMetadata.analysisData || analysisResults,
+        attributes: nftMetadata.attributes || []
+      };
+      
+      await saveMintToSession(mintResult, resultMetadata);
+      
+    } catch (error: any) {
+      console.error('❌ [DirectMint] Direct metadata mint failed:', error);
+      setMintingError(`Direct metadata minting failed: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Helper function to save mint to session storage
+  const saveMintToSession = async (mintResult: any, metadata: any) => {
+    try {
+      const mintedNFT = {
+        contractAddress: mintResult.contractAddress,
+        tokenId: mintResult.tokenId,
+        mintedAt: new Date().toISOString(),
+        transactionHash: mintResult.transactionHash,
+        metadata: {
+          name: metadata.name,
+          description: metadata.description,
+          image: metadata.image,
+          animation_url: metadata.animation_url,
+          danceStyle: metadata.danceStyle || [danceStyle || 'Contemporary'],
+          difficulty: metadata.difficulty || 'Intermediate',
+          choreographer: walletAddress,
+          views: 0,
+          analysisData: metadata.analysisData || {},
+          attributes: metadata.attributes || []
+        }
+      };
+      
+      // Get existing minted NFTs from session
+      const existingMints = sessionStorage.getItem('mintedNFTs');
+      const mintedNFTs = existingMints ? JSON.parse(existingMints) : [];
+      
+      // Add new mint
+      mintedNFTs.push(mintedNFT);
+      
+      // Save back to session
+      sessionStorage.setItem('mintedNFTs', JSON.stringify(mintedNFTs));
+      
+      console.log('💾 [SaveMint] Saved minted NFT to session storage for dashboard');
+    } catch (error) {
+      console.warn('⚠️ [SaveMint] Failed to save mint to session storage:', error);
+    }
+  };
+
   const handleMint = async () => {
     if (!isWalletConnected || !walletAddress) {
       setMintingError('Please connect your wallet first')
@@ -274,6 +481,13 @@ export default function Mint() {
     if (!isCorrectNetwork) {
       setMintingError('Please switch to Mantle Sepolia Testnet')
       return
+    }
+
+    // Check if we should use stored IPFS data
+    if (hasStoredIPFSData && useStoredData && storedIPFSData?.ipfsData?.metadataIpfsHash) {
+      console.log('🎯 [Mint] Using stored IPFS metadata for direct minting');
+      await handleDirectIPFSMint();
+      return;
     }
 
     if (!title || !danceStyle) {
@@ -344,6 +558,9 @@ export default function Mint() {
         console.log('🎉 [DEBUG] Mantle NFT minted successfully!');
         console.log('📋 [DEBUG] Token ID:', mintResult.tokenId);
         console.log('📝 [DEBUG] Transaction:', mintResult.transactionHash);
+        
+        // Save successful mint to session storage for dashboard
+        await saveMintToSession(mintResult, result.metadata);
       } else {
         throw new Error('Contract minting failed');
       }
@@ -367,6 +584,26 @@ export default function Mint() {
         </div>
 
         <div className="relative max-w-2xl mx-auto">
+          {/* IPFS Status Banner */}
+          {hasStoredIPFSData && useStoredData && (
+            <div className="mb-8 bg-gradient-to-r from-purple-950/50 to-green-950/50 border border-purple-600/30 rounded-xl p-4 animate-fade-in-down">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-green-400 rounded-full flex items-center justify-center">
+                  <span className="text-black text-sm font-bold">🚀</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-purple-300 font-medium text-sm">IPFS Direct Minting Enabled</h3>
+                  <p className="text-gray-400 text-xs">
+                    Using your uploaded video analysis metadata for seamless NFT creation
+                  </p>
+                </div>
+                <div className="text-green-400 text-xs font-medium">
+                  READY
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="text-center mb-12 animate-fade-in-down">
             <h1 className="font-medium text-5xl md:text-6xl text-white mb-4">
               Mint Dance NFT
@@ -442,14 +679,118 @@ export default function Mint() {
             </div>
           </div>
 
+          {/* Metadata Status Display */}
+          {hasStoredIPFSData && (
+            <div className="group relative mb-8 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-purple-400/10 rounded-xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+              <div className="relative bg-black border border-purple-600/50 rounded-xl p-6 hover:border-purple-600/70 transition duration-300">
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-3 h-3 rounded-full bg-purple-400 animate-pulse"></div>
+                    <h3 className="text-lg font-medium text-purple-400">
+                      {storedIPFSData?.nftMetadata ? 'NFT Metadata Ready for Minting' : 'IPFS Metadata Available'}
+                    </h3>
+                  </div>
+                  <p className="text-gray-300 text-sm">
+                    {storedIPFSData?.nftMetadata ? 
+                      'Complete NFT metadata with analysis results is ready for minting' :
+                      'Your uploaded video analysis is ready for direct NFT minting'
+                    }
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="bg-purple-950/40 border border-purple-800/50 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-400 block mb-1">Metadata Status:</span>
+                        <span className="text-purple-300 font-medium">
+                          {storedIPFSData?.nftMetadata ? '✅ Complete' : 'Legacy IPFS'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block mb-1">IPFS Upload:</span>
+                        <span className={`font-medium ${storedIPFSData?.ipfsData?.uploadSuccess ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {storedIPFSData?.ipfsData?.uploadSuccess ? '✅ Success' : 
+                           storedIPFSData?.ipfsData?.uploadAttempted ? '⚠️ Failed (Local)' : '⏭️ Skipped'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block mb-1">Analysis Results:</span>
+                        <span className="text-green-400 text-xs">
+                          {storedIPFSData?.analysisResults?.detectedMovements?.length || 0} movements detected
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block mb-1">Quality Score:</span>
+                        <span className="text-green-400 text-xs">
+                          {storedIPFSData?.analysisResults?.qualityMetrics?.overall || 0}/100
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {storedIPFSData?.ipfsData?.metadataIpfsHash && (
+                      <div className="mt-3 pt-3 border-t border-purple-800/30">
+                        <span className="text-gray-400 block mb-1 text-xs">IPFS Hash:</span>
+                        <span className="text-purple-300 font-mono text-xs break-all">
+                          {storedIPFSData.ipfsData.metadataIpfsHash.slice(0, 12)}...{storedIPFSData.ipfsData.metadataIpfsHash.slice(-8)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-4 bg-green-950/30 border border-green-800/50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="useStoredData"
+                      checked={useStoredData}
+                      onChange={(e) => setUseStoredData(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 bg-black border-purple-900/50 rounded focus:ring-purple-500 focus:ring-2"
+                    />
+                    <label htmlFor="useStoredData" className="text-sm text-gray-300 flex-1">
+                      Use stored metadata for direct minting (recommended)
+                    </label>
+                    {useStoredData && (
+                      <span className="text-green-400 text-xs font-medium">✅ ENABLED</span>
+                    )}
+                  </div>
+                  
+                  {useStoredData && (
+                    <div className="bg-green-950/40 border border-green-800/50 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="text-green-400 text-xl">🚀</div>
+                        <div>
+                          <p className="text-green-400 text-sm font-medium mb-1">
+                            Direct Metadata Minting Enabled
+                          </p>
+                          <p className="text-green-300/80 text-xs">
+                            {storedIPFSData?.nftMetadata ? 
+                              'Using complete NFT metadata with analysis results. No form required!' :
+                              'Using IPFS metadata hash for minting. Analysis data included.'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Mint Form */}
-          <div className="group relative mb-8 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+          <div className={`group relative mb-8 animate-fade-in-up transition-opacity duration-300 ${useStoredData ? 'opacity-50' : 'opacity-100'}`} style={{ animationDelay: "0.2s" }}>
             <div className="absolute inset-0 bg-gradient-to-r from-green-600/10 to-green-400/5 rounded-xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100"></div>
             <div className="relative bg-black border border-green-900/30 rounded-xl p-6 hover:border-green-600/50 transition duration-300">
               <div className="mb-6">
-                <h3 className="text-lg font-medium text-white mb-2">Dance Details</h3>
+                <h3 className="text-lg font-medium text-white mb-2">
+                  Dance Details {useStoredData && hasStoredIPFSData && <span className="text-gray-500 text-sm">(Optional - IPFS data will be used)</span>}
+                </h3>
                 <p className="text-gray-400 text-sm">
-                  Enter your dance information to create an NFT on Mantle
+                  {useStoredData && hasStoredIPFSData ? 
+                    'Form is optional when using IPFS metadata. Your stored analysis data will be used for minting.' :
+                    'Enter your dance information to create an NFT on Mantle'
+                  }
                 </p>
               </div>
               
@@ -519,16 +860,21 @@ export default function Mint() {
 
                 <Button
                   onClick={handleMint}
-                  disabled={!isWalletConnected || !isCorrectNetwork || isLoading || !title || !danceStyle}
+                  disabled={!isWalletConnected || !isCorrectNetwork || isLoading || (!useStoredData && (!title || !danceStyle))}
                   className="w-full bg-gradient-to-r from-green-400 to-green-600 hover:from-green-300 hover:to-green-500 text-black font-medium shadow-lg shadow-green-500/20 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full"></div>
-                      Minting...
+                      {useStoredData ? 'Minting with IPFS Data...' : 'Minting...'}
                     </div>
                   ) : (
-                    'Mint Dance NFT'
+                    <div className="flex items-center gap-2">
+                      {useStoredData && hasStoredIPFSData && (
+                        <span className="text-xs">🚀</span>
+                      )}
+                      {useStoredData && hasStoredIPFSData ? 'Mint NFT with IPFS Metadata' : 'Mint Dance NFT'}
+                    </div>
                   )}
                 </Button>
 

@@ -69,6 +69,14 @@ export interface VideoUploadResponse {
   uploadUrl: string;
   processingStatus: ProcessingStatus;
   estimatedProcessingTime: number;
+  videoData?: string; // Base64 video data for immediate use
+  fileName?: string;
+  fileSize?: number;
+  uploadedAt?: string;
+  status?: string;
+  metadata?: any;
+  processingStages?: any[];
+  note?: string;
 }
 
 export type ProcessingStatus = 

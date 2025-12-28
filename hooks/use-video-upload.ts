@@ -157,6 +157,23 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
           },
         });
 
+        // ALSO save in the format expected by results page
+        const recordingData = {
+          poseFrames: 0, // Will be updated when analysis completes
+          duration: 0, // Will be updated when analysis completes
+          recordedAt: new Date().toISOString(),
+          videoData: null, // We don't store the actual video data for uploaded files
+          videoId: response.videoId,
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          uploadedAt: Date.now(),
+          metadata: metadata,
+          poseKeypoints: [] // Will be populated when analysis completes
+        };
+        
+        console.log('💾 [useVideoUpload] Saving recording data for results page:', recordingData);
+        sessionStorage.setItem('moveMintRecording', JSON.stringify(recordingData));
+
         progressTracker.updateProgress(uploadOperationId, {
           stage: 'processing',
           percentage: 35,
@@ -227,6 +244,24 @@ export function useVideoUpload(options: UseVideoUploadOptions = {}): UseVideoUpl
             percentage: 100,
             message: 'Video analysis complete!',
           });
+          
+          // Update the recording data with completed analysis
+          try {
+            const existingData = sessionStorage.getItem('moveMintRecording');
+            if (existingData) {
+              const recordingData = JSON.parse(existingData);
+              recordingData.poseFrames = status.processingStages?.find(s => s.name === 'analysis')?.percentage || 100;
+              recordingData.duration = Math.round((status.estimatedProcessingTime || 60) * 0.8); // Estimate duration
+              recordingData.analysisComplete = true;
+              recordingData.analysisCompletedAt = Date.now();
+              
+              console.log('💾 [useVideoUpload] Updating recording data with analysis results:', recordingData);
+              sessionStorage.setItem('moveMintRecording', JSON.stringify(recordingData));
+            }
+          } catch (error) {
+            console.warn('Failed to update recording data:', error);
+          }
+          
           break;
         }
 

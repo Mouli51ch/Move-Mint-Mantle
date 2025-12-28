@@ -92,7 +92,19 @@ export default function Results() {
     const stored = sessionStorage.getItem('moveMintRecording')
     if (stored) {
       const data = JSON.parse(stored)
+      console.log('📊 [Results] Loaded recording data:', data);
       setRecordingData(data)
+      
+      // If we have a video file but no pose data, this is an uploaded video
+      if (data.videoId && !data.poseKeypoints?.length) {
+        console.log('📹 [Results] Found uploaded video without pose analysis, fetching analysis...');
+        setVideoId(data.videoId);
+        setCurrentVideoId(data.videoId);
+        fetchAnalysisResults(data.videoId);
+        return;
+      }
+      
+      // If we have video data (recorded video), set it
       if (data.videoData) setVideoUrl(data.videoData)
 
       // REAL ANALYSIS: Use recorded pose data
@@ -401,34 +413,41 @@ export default function Results() {
   // Calculate stats from actual recording
   const stats = recordingData ? {
     totalFrames: recordingData.poseFrames,
-    duration: recordingData.duration,
-    frameRate: recordingData.poseFrames > 0 ? Math.round(recordingData.poseFrames / recordingData.duration) : 0,
-    quality: recordingData.poseFrames === 0 ? 'Pending Analysis' :
-             recordingData.poseFrames > 300 ? 'Excellent' :
-             recordingData.poseFrames > 150 ? 'Good' :
-             recordingData.poseFrames > 50 ? 'Fair' : 'Low',
-    qualityScore: recordingData.poseFrames > 0 ? Math.min(100, Math.round((recordingData.poseFrames / 500) * 100)) : 0
+    duration: recordingData.duration || 0,
+    frameRate: recordingData.poseFrames > 0 ? Math.round(recordingData.poseFrames / (recordingData.duration || 1)) : 0,
+    quality: recordingData.poseFrames === 0 ? 
+      (recordingData.videoId ? 'Analysis Pending' : 'Pending Analysis') :
+      recordingData.poseFrames > 300 ? 'Excellent' :
+      recordingData.poseFrames > 150 ? 'Good' :
+      recordingData.poseFrames > 50 ? 'Fair' : 'Low',
+    qualityScore: recordingData.poseFrames > 0 ? Math.min(100, Math.round((recordingData.poseFrames / 500) * 100)) : 0,
+    isUploaded: !!recordingData.videoId,
+    fileName: recordingData.fileName
   } : null
 
   // Show actual detected data instead of mock movements
   const detectedMovements = stats ? [
     {
-      name: "Move Detection",
-      confidence: stats.qualityScore,
-      reps: stats.totalFrames > 0 ? `${stats.totalFrames} frames` : "Awaiting analysis",
-      description: stats.totalFrames > 0 ? `${stats.quality} quality - ${stats.frameRate} FPS` : `${stats.quality} - Upload recorded to analyze`
+      name: stats.isUploaded ? "Video Upload" : "Move Detection",
+      confidence: stats.isUploaded ? 100 : stats.qualityScore,
+      reps: stats.isUploaded ? `${stats.fileName}` : (stats.totalFrames > 0 ? `${stats.totalFrames} frames` : "Awaiting analysis"),
+      description: stats.isUploaded ? 
+        (loadingAnalysis ? "Analyzing uploaded video..." : "Upload complete - analysis pending") :
+        (stats.totalFrames > 0 ? `${stats.quality} quality - ${stats.frameRate} FPS` : `${stats.quality} - Upload recorded to analyze`)
     },
     {
       name: "Body Tracking",
-      confidence: stats.totalFrames > 0 ? (stats.qualityScore > 70 ? 95 : stats.qualityScore) : 0,
-      reps: `${stats.duration}s`,
-      description: stats.totalFrames > 0 ? "Full body skeleton detected" : "Will detect skeleton on analysis"
+      confidence: stats.totalFrames > 0 ? (stats.qualityScore > 70 ? 95 : stats.qualityScore) : (stats.isUploaded ? 50 : 0),
+      reps: stats.isUploaded ? "Processing..." : `${stats.duration}s`,
+      description: stats.totalFrames > 0 ? "Full body skeleton detected" : 
+        (stats.isUploaded ? "Will detect skeleton during analysis" : "Will detect skeleton on analysis")
     },
     {
       name: "Move Analysis",
-      confidence: stats.totalFrames > 0 ? 100 : 0,
-      reps: stats.totalFrames > 0 ? "Ready" : "Pending",
-      description: stats.totalFrames > 0 ? "AI analysis pipeline active" : "Analyze video to begin"
+      confidence: stats.totalFrames > 0 ? 100 : (stats.isUploaded ? (loadingAnalysis ? 25 : 10) : 0),
+      reps: stats.totalFrames > 0 ? "Ready" : (stats.isUploaded ? "In Progress" : "Pending"),
+      description: stats.totalFrames > 0 ? "AI analysis pipeline active" : 
+        (stats.isUploaded ? "AI analyzing dance movements" : "Analyze video to begin")
     },
   ] : [
     { name: "No recording data", confidence: 0, reps: "0", description: "Please record a video first" }
@@ -464,6 +483,8 @@ export default function Results() {
                 : stats
                 ? stats.totalFrames > 0
                   ? `Local pose detection complete: ${stats.totalFrames} frames captured in ${stats.duration}s`
+                  : recordingData?.videoId
+                  ? `Video uploaded successfully (${recordingData.fileName}). Analysis in progress...`
                   : `Video uploaded (${stats.duration}s duration). Connect to API for full dance analysis.`
                 : "No recording data available. Please record a video first."
               }

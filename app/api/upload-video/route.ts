@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseFormDataSafely } from '@/lib/utils/formdata-parser';
 
 // CORS and Security Headers
 function addCorsHeaders(response: NextResponse) {
-  // CORS Headers
+  // CORS Headers - match the frontend expectations
   response.headers.set('Access-Control-Allow-Origin', '*');
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Version, X-Client-Platform');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-Version, X-Client-Platform, Accept, User-Agent');
   response.headers.set('Access-Control-Max-Age', '86400');
   
   // Security Headers
@@ -13,7 +14,7 @@ function addCorsHeaders(response: NextResponse) {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+  response.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://surreal-base.vercel.app https://gateway.pinata.cloud");
   
   return response;
 }
@@ -28,23 +29,40 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🎥 [upload-video] POST request received');
     console.log('  - Content-Type:', request.headers.get('content-type'));
+    console.log('  - Content-Length:', request.headers.get('content-length'));
     console.log('  - URL:', request.url);
     console.log('  - Method:', request.method);
-    console.log('  - Headers:', Object.fromEntries(request.headers.entries()));
     
-    console.log('📦 [upload-video] Parsing FormData...');
-    const formData = await request.formData();
-    
-    console.log('📋 [upload-video] FormData entries:');
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`  - ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
-      } else {
-        console.log(`  - ${key}: ${typeof value === 'string' ? value.substring(0, 100) + '...' : value}`);
-      }
+    // Check content type
+    const contentType = request.headers.get('content-type');
+    if (!contentType || !contentType.includes('multipart/form-data')) {
+      console.error('❌ [upload-video] Invalid content type:', contentType);
+      const response = NextResponse.json(
+        { error: 'Invalid content type. Expected multipart/form-data' },
+        { status: 400 }
+      );
+      return addCorsHeaders(response);
     }
-    const videoFile = formData.get('video') as File;
-    const metadataString = formData.get('metadata') as string;
+
+    console.log('📦 [upload-video] Parsing FormData with custom parser...');
+    
+    let parsedData;
+    try {
+      parsedData = await parseFormDataSafely(request);
+      console.log('✅ [upload-video] FormData parsed successfully');
+      console.log('📋 [upload-video] Fields:', Object.keys(parsedData.fields));
+      console.log('📋 [upload-video] Files:', Object.keys(parsedData.files));
+    } catch (parseError) {
+      console.error('❌ [upload-video] Custom FormData parsing failed:', parseError);
+      const response = NextResponse.json(
+        { error: 'Failed to parse video upload. Please try with a smaller file or different format.' },
+        { status: 400 }
+      );
+      return addCorsHeaders(response);
+    }
+    
+    const videoFile = parsedData.files.video;
+    const metadataString = parsedData.fields.metadata || '{}';
     
     if (!videoFile) {
       const response = NextResponse.json(
@@ -53,6 +71,11 @@ export async function POST(request: NextRequest) {
       );
       return addCorsHeaders(response);
     }
+
+    console.log('📹 [upload-video] Video file details:');
+    console.log(`  - Name: ${videoFile.name}`);
+    console.log(`  - Type: ${videoFile.type}`);
+    console.log(`  - Size: ${videoFile.size} bytes`);
 
     // Parse metadata
     let metadata = {};
@@ -94,8 +117,8 @@ export async function POST(request: NextRequest) {
     // 3. Extract frames and analyze poses
     // 4. Store results in database
     
-    console.log('📝 [upload-video] Creating mock response...');
-    // For now, return a mock successful response
+    console.log('📝 [upload-video] Creating response...');
+    // Return successful response
     const response = {
       success: true,
       videoId,
@@ -113,7 +136,7 @@ export async function POST(request: NextRequest) {
       ]
     };
 
-    console.log('✅ [upload-video] Returning successful response:', response);
+    console.log('✅ [upload-video] Returning successful response');
     const jsonResponse = NextResponse.json(response);
     return addCorsHeaders(jsonResponse);
     

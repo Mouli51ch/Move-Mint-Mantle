@@ -14,17 +14,11 @@ const nextConfig = {
     '@tensorflow/tfjs-converter',
     '@tensorflow-models/pose-detection',
   ],
-  // Configure API routes
+  // Configure external packages for server components (updated for Next.js 16)
+  serverExternalPackages: [],
+  // Configure body size limits for API routes
   experimental: {
-    // Increase body size limit for video uploads
-    serverComponentsExternalPackages: [],
-  },
-  // Configure body size limits
-  api: {
-    bodyParser: {
-      sizeLimit: '500mb',
-    },
-    responseLimit: false,
+    // Add any experimental features here if needed
   },
   webpack: (config, { isServer }) => {
     // Handle TensorFlow.js

@@ -80,6 +80,15 @@ export default function Home() {
               className="w-28 h-28 object-contain"
             />
           </div>
+          
+          {/* New Hero Dance Logo - Prominent Display */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-5 animate-float" style={{animationDelay: '0.5s'}}>
+            <img 
+              src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(6).png" 
+              alt="MoveMint Hero Dance" 
+              className="w-96 h-96 object-contain"
+            />
+          </div>
         </div>
 
         <div className="relative max-w-5xl mx-auto text-center">

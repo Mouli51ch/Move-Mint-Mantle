@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "devCommand": "npm run dev",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_MOVEMINT_CONTRACT_ADDRESS": "@movemint_contract_address",
+    "NEXT_PUBLIC_MANTLE_CHAIN_ID": "@mantle_chain_id",
+    "NEXT_PUBLIC_MANTLE_RPC_URL": "@mantle_rpc_url",
+    "NEXT_PUBLIC_CASHFLOW_PROTOCOL_ADDRESS": "@cashflow_protocol_address",
+    "NEXT_PUBLIC_REVENUE_ORACLE_ADDRESS": "@revenue_oracle_address",
+    "NEXT_PUBLIC_DISTRIBUTION_ENGINE_ADDRESS": "@distribution_engine_address",
+    "NEXT_PUBLIC_CASHFLOW_TOKEN_ADDRESS": "@cashflow_token_address",
+    "NEXT_PUBLIC_APP_ENV": "@app_env",
+    "NEXT_PUBLIC_ENABLE_DEBUG_LOGS": "@enable_debug_logs",
+    "NEXT_PUBLIC_API_URL": "@api_url",
+    "NEXT_PUBLIC_ENABLE_VIDEO_PROCESSING": "@enable_video_processing",
+    "NEXT_PUBLIC_ENABLE_NFT_MINTING": "@enable_nft_minting",
+    "NEXT_PUBLIC_API_TIMEOUT": "@api_timeout",
+    "NEXT_PUBLIC_MAX_RETRY_ATTEMPTS": "@max_retry_attempts",
+    "NEXT_PUBLIC_UPLOAD_CHUNK_SIZE": "@upload_chunk_size",
+    "PINATA_JWT": "@pinata_jwt",
+    "PINATA_API_KEY": "@pinata_api_key",
+    "PINATA_SECRET_KEY": "@pinata_secret_key"
+  }
+}

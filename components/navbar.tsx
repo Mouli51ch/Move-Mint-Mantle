@@ -10,9 +10,11 @@ export function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded flex items-center justify-center group-hover:shadow-lg group-hover:shadow-green-500/50 transition-all">
-              <span className="text-xs font-bold text-black">MM</span>
-            </div>
+            <img 
+              src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo.png" 
+              alt="MoveMint Logo" 
+              className="w-8 h-8 object-contain group-hover:scale-110 transition-transform duration-200"
+            />
             <span className="font-medium text-lg text-white">MoveMint</span>
           </Link>
 

@@ -18,7 +18,7 @@ export function AppNavbar() {
             <img 
               src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo.png" 
               alt="MoveMint Logo" 
-              className="w-8 h-8 object-contain group-hover:scale-110 transition-transform duration-200"
+              className="w-10 h-10 object-contain group-hover:scale-110 transition-transform duration-200"
             />
             <span className="font-medium text-lg text-white">MoveMint</span>
           </Link>

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useState, useEffect } from "react"
 import { ethers } from "ethers"
+import { cashflowProtocolService } from "@/lib/services/cashflow-protocol"
 
 // Extend Window interface for ethereum
 declare global {
@@ -32,6 +33,13 @@ export default function Mint() {
   const [hasStoredIPFSData, setHasStoredIPFSData] = useState(false)
   const [storedIPFSData, setStoredIPFSData] = useState<any>(null)
   const [useStoredData, setUseStoredData] = useState(false)
+
+  // Cashflow Protocol integration state
+  const [enableCashflowStream, setEnableCashflowStream] = useState(false)
+  const [projectedMonthlyRevenue, setProjectedMonthlyRevenue] = useState("")
+  const [streamDuration, setStreamDuration] = useState(12)
+  const [cashflowStreamId, setCashflowStreamId] = useState<number | null>(null)
+  const [cashflowProtocolDeployed, setCashflowProtocolDeployed] = useState(false)
 
   // Debug: Log current state on every render
   console.log('🎨 [RENDER] Mint page state:', { 
@@ -76,6 +84,7 @@ export default function Mint() {
   // Check wallet connection on mount and recover state if needed
   useEffect(() => {
     checkWalletConnection()
+    initializeCashflowProtocol()
     
     // Check for stored analysis data from recent upload
     const storedRecording = sessionStorage.getItem('moveMintRecording');
@@ -224,6 +233,47 @@ export default function Mint() {
           }
         }
       }
+    }
+  }
+
+  // Initialize cashflow protocol
+  const initializeCashflowProtocol = async () => {
+    try {
+      const isDeployed = await cashflowProtocolService.isDeployed()
+      setCashflowProtocolDeployed(isDeployed)
+      console.log('🏛️ [Cashflow] Protocol deployed:', isDeployed)
+    } catch (error) {
+      console.error('Error checking cashflow protocol:', error)
+      setCashflowProtocolDeployed(false)
+    }
+  }
+
+  // Register cashflow stream after successful NFT mint
+  const registerCashflowStream = async (nftTitle: string) => {
+    if (!enableCashflowStream || !projectedMonthlyRevenue || !cashflowProtocolDeployed) {
+      return null
+    }
+
+    try {
+      console.log('💰 [Cashflow] Registering stream for NFT:', nftTitle)
+      
+      const result = await cashflowProtocolService.registerStream({
+        title: `${nftTitle} - Royalty Stream`,
+        projectedMonthlyRevenue,
+        durationMonths: streamDuration
+      })
+
+      if (result.success && result.streamId) {
+        setCashflowStreamId(result.streamId)
+        console.log('✅ [Cashflow] Stream registered with ID:', result.streamId)
+        return result.streamId
+      } else {
+        console.error('❌ [Cashflow] Stream registration failed:', result.error)
+        return null
+      }
+    } catch (error) {
+      console.error('❌ [Cashflow] Stream registration error:', error)
+      return null
     }
   }
 
@@ -407,6 +457,15 @@ export default function Mint() {
       console.log('📋 [DirectMint] Token ID:', tokenId);
       console.log('📝 [DirectMint] Transaction:', receipt.hash);
       
+      // Register cashflow stream if enabled
+      if (enableCashflowStream && cashflowProtocolDeployed) {
+        console.log('💰 [Cashflow] Registering stream after successful direct mint...')
+        const streamId = await registerCashflowStream(mintParams.title)
+        if (streamId) {
+          console.log('✅ [Cashflow] Stream registered successfully with ID:', streamId)
+        }
+      }
+      
       // Save successful mint to session storage for dashboard
       const mintResult = {
         success: true,
@@ -558,6 +617,15 @@ export default function Mint() {
         console.log('🎉 [DEBUG] Mantle NFT minted successfully!');
         console.log('📋 [DEBUG] Token ID:', mintResult.tokenId);
         console.log('📝 [DEBUG] Transaction:', mintResult.transactionHash);
+        
+        // Register cashflow stream if enabled
+        if (enableCashflowStream && cashflowProtocolDeployed) {
+          console.log('💰 [Cashflow] Registering stream after successful mint...')
+          const streamId = await registerCashflowStream(result.metadata.name || title)
+          if (streamId) {
+            console.log('✅ [Cashflow] Stream registered successfully with ID:', streamId)
+          }
+        }
         
         // Save successful mint to session storage for dashboard
         await saveMintToSession(mintResult, result.metadata);
@@ -778,6 +846,119 @@ export default function Mint() {
             </div>
           )}
 
+          {/* Cashflow Protocol Integration */}
+          {cashflowProtocolDeployed && (
+            <div className="group relative mb-8 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-blue-400/5 rounded-xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100"></div>
+              <div className="relative bg-black border border-blue-900/30 rounded-xl p-6 hover:border-blue-600/50 transition duration-300">
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse"></div>
+                    <h3 className="text-lg font-medium text-blue-400">Cashflow Protocol Integration</h3>
+                  </div>
+                  <p className="text-gray-300 text-sm">
+                    Automatically register a royalty stream for your NFT to tokenize future earnings
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-blue-950/30 border border-blue-800/50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="enableCashflowStream"
+                      checked={enableCashflowStream}
+                      onChange={(e) => setEnableCashflowStream(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 bg-black border-blue-900/50 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                    <label htmlFor="enableCashflowStream" className="text-sm text-gray-300 flex-1">
+                      Register cashflow stream after minting (enables future tokenization)
+                    </label>
+                    {enableCashflowStream && (
+                      <span className="text-blue-400 text-xs font-medium">✅ ENABLED</span>
+                    )}
+                  </div>
+                  
+                  {enableCashflowStream && (
+                    <div className="space-y-4 p-4 bg-blue-950/20 border border-blue-800/30 rounded-lg">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Projected Monthly Revenue (MNT) *
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={projectedMonthlyRevenue}
+                          onChange={(e) => setProjectedMonthlyRevenue(e.target.value)}
+                          placeholder="0.1"
+                          className="bg-black border-blue-900/30 text-white placeholder:text-gray-600 focus:border-blue-500 focus:ring-blue-500/20"
+                          required={enableCashflowStream}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Estimated monthly royalties from your dance NFT (licensing, performances, etc.)
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Stream Duration (Months)
+                        </label>
+                        <Input
+                          type="number"
+                          min="6"
+                          max="60"
+                          value={streamDuration}
+                          onChange={(e) => setStreamDuration(parseInt(e.target.value))}
+                          className="bg-black border-blue-900/30 text-white placeholder:text-gray-600 focus:border-blue-500 focus:ring-blue-500/20"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          How long you expect to earn royalties (6-60 months)
+                        </p>
+                      </div>
+
+                      <div className="bg-blue-950/40 border border-blue-800/50 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="text-blue-400 text-xl">💰</div>
+                          <div>
+                            <p className="text-blue-400 text-sm font-medium mb-1">
+                              Cashflow Stream Benefits
+                            </p>
+                            <ul className="text-blue-300/80 text-xs space-y-1">
+                              <li>• Tokenize future royalties for immediate liquidity</li>
+                              <li>• Allow investors to purchase shares of your earnings</li>
+                              <li>• Automated monthly distributions to token holders</li>
+                              <li>• Maintain creative control while accessing capital</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!cashflowProtocolDeployed && (
+            <div className="group relative mb-8 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+              <div className="relative bg-black border border-gray-700 rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                  <h3 className="text-lg font-medium text-gray-400">Cashflow Protocol</h3>
+                </div>
+                <p className="text-gray-500 text-sm mb-4">
+                  Cashflow protocol integration will be available once the contracts are fully deployed.
+                </p>
+                <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
+                  <p className="text-gray-400 text-xs">
+                    The cashflow protocol allows creators to tokenize future royalty streams. 
+                    This feature will enable you to register royalty streams and access immediate liquidity.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Mint Form */}
           <div className={`group relative mb-8 animate-fade-in-up transition-opacity duration-300 ${useStoredData ? 'opacity-50' : 'opacity-100'}`} style={{ animationDelay: "0.2s" }}>
             <div className="absolute inset-0 bg-gradient-to-r from-green-600/10 to-green-400/5 rounded-xl blur-xl group-hover:blur-2xl transition-all duration-300 opacity-0 group-hover:opacity-100"></div>
@@ -860,7 +1041,13 @@ export default function Mint() {
 
                 <Button
                   onClick={handleMint}
-                  disabled={!isWalletConnected || !isCorrectNetwork || isLoading || (!useStoredData && (!title || !danceStyle))}
+                  disabled={
+                    !isWalletConnected || 
+                    !isCorrectNetwork || 
+                    isLoading || 
+                    (!useStoredData && (!title || !danceStyle)) ||
+                    (enableCashflowStream && !projectedMonthlyRevenue)
+                  }
                   className="w-full bg-gradient-to-r from-green-400 to-green-600 hover:from-green-300 hover:to-green-500 text-black font-medium shadow-lg shadow-green-500/20 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
@@ -1050,6 +1237,44 @@ export default function Mint() {
                           IP: {mintResult.metadata.ipfsHash}<br/>
                           NFT: {mintResult.metadata.nftIpfsHash}
                         </code>
+                      </div>
+                    </div>
+                  )}
+
+                  {cashflowStreamId && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-3">
+                        Cashflow Stream Registered:
+                      </label>
+                      <div className="bg-blue-950/30 border border-blue-800/50 p-4 rounded-lg">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="text-blue-400 text-xl">💰</div>
+                          <div>
+                            <p className="text-blue-400 font-medium">Stream ID: {cashflowStreamId}</p>
+                            <p className="text-blue-300/80 text-sm">
+                              Monthly Revenue: {projectedMonthlyRevenue} MNT | Duration: {streamDuration} months
+                            </p>
+                          </div>
+                        </div>
+                        <div className="bg-blue-950/40 border border-blue-800/30 rounded-lg p-3">
+                          <p className="text-blue-300/80 text-xs mb-2">
+                            <strong className="text-blue-400">Next Steps:</strong>
+                          </p>
+                          <ul className="text-blue-300/80 text-xs space-y-1">
+                            <li>• Visit the Cashflow Protocol page to tokenize your stream</li>
+                            <li>• Set the percentage of royalties to tokenize (up to 80%)</li>
+                            <li>• Enable investors to purchase shares of your future earnings</li>
+                            <li>• Receive immediate liquidity while retaining creative control</li>
+                          </ul>
+                        </div>
+                        <div className="mt-3">
+                          <a
+                            href="/app/cashflow"
+                            className="inline-flex items-center text-blue-400 hover:text-blue-300 text-sm font-medium transition duration-300"
+                          >
+                            Manage Cashflow Stream →
+                          </a>
+                        </div>
                       </div>
                     </div>
                   )}

@@ -18,7 +18,9 @@ import {
   CheckCircle,
   Layers,
   Network,
-  Rocket
+  Rocket,
+  Eye,
+  Heart
 } from "lucide-react"
 
 export default function Home() {
@@ -109,13 +111,13 @@ export default function Home() {
             </Button>
             <Button 
               onClick={() => {
-                console.log("Try Demo clicked")
-                router.push("/app/upload")
+                console.log("Marketplace clicked")
+                router.push("/marketplace")
               }}
               variant="outline"
               className="border-green-600/50 text-green-400 hover:bg-green-950/30 hover:border-green-400 px-8 py-3 h-auto bg-black transition-all cursor-pointer hover:scale-105"
             >
-              Try Demo
+              Explore Marketplace
             </Button>
             <Button
               onClick={() => router.push("/how-it-works")}
@@ -135,6 +137,72 @@ export default function Home() {
           <svg className="w-full h-32 mt-8 text-green-500/10" viewBox="0 0 1200 120" preserveAspectRatio="none">
             <path d="M0,50 Q300,0 600,50 T1200,50 L1200,120 L0,120 Z" fill="currentColor"></path>
           </svg>
+        </div>
+      </section>
+
+      {/* Marketplace Preview Section */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-green-950/5 to-black">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-4 py-2 mb-6">
+              <Coins className="w-4 h-4 text-green-400" />
+              <span className="text-green-300 font-medium">NFT Marketplace</span>
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-4">Discover Unique Dance NFTs</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg mb-8">
+              Explore, collect, and trade dance NFTs created by talented artists worldwide
+            </p>
+            
+            <div className="flex justify-center">
+              <Button 
+                onClick={() => router.push("/marketplace")}
+                className="bg-gradient-to-r from-green-400 to-green-600 hover:from-green-300 hover:to-green-500 text-black font-semibold px-8 py-3 h-auto shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all cursor-pointer hover:scale-105 inline-flex items-center gap-2"
+              >
+                <Sparkles className="w-5 h-5" />
+                Explore Marketplace
+                <ArrowRight className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+          
+          {/* Marketplace Features */}
+          <div className="grid md:grid-cols-3 gap-6">
+            <Card className="bg-gradient-to-br from-green-950/30 to-black border-green-500/20 hover:border-green-400/40 transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6 text-center">
+                <div className="p-3 bg-green-500/10 rounded-xl w-fit mx-auto mb-4">
+                  <Eye className="w-8 h-8 text-green-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">Discover</h3>
+                <p className="text-gray-400 text-sm">
+                  Browse unique dance NFTs from creators around the world
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-green-950/30 to-black border-green-500/20 hover:border-green-400/40 transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6 text-center">
+                <div className="p-3 bg-green-500/10 rounded-xl w-fit mx-auto mb-4">
+                  <Coins className="w-8 h-8 text-green-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">Trade</h3>
+                <p className="text-gray-400 text-sm">
+                  Buy and sell dance NFTs with low fees on Mantle Network
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-green-950/30 to-black border-green-500/20 hover:border-green-400/40 transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6 text-center">
+                <div className="p-3 bg-green-500/10 rounded-xl w-fit mx-auto mb-4">
+                  <Heart className="w-8 h-8 text-green-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">Collect</h3>
+                <p className="text-gray-400 text-sm">
+                  Build your collection of rare and valuable dance NFTs
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 

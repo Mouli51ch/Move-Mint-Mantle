@@ -18,14 +18,17 @@ export function Navbar() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
+            <Link href="/marketplace" className="text-sm text-gray-400 hover:text-green-400 transition">
+              Marketplace
+            </Link>
+            <Link href="/app/cashflow" className="text-sm text-gray-400 hover:text-green-400 transition">
+              Cashflow Protocol
+            </Link>
             <Link href="/how-it-works" className="text-sm text-gray-400 hover:text-green-400 transition">
               How It Works
             </Link>
             <Link href="/features" className="text-sm text-gray-400 hover:text-green-400 transition">
               Features
-            </Link>
-            <Link href="/pricing" className="text-sm text-gray-400 hover:text-green-400 transition">
-              Pricing
             </Link>
             <Link href="/community" className="text-sm text-gray-400 hover:text-green-400 transition">
               Community

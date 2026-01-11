@@ -64,6 +64,22 @@ export default function Home() {
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-green-600/10 rounded-full blur-3xl"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-500/5 rounded-full blur-3xl"></div>
+          
+          {/* Dance Logo Components as Background Elements */}
+          <div className="absolute top-20 right-10 opacity-10 animate-float">
+            <img 
+              src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(5).png" 
+              alt="Dance Element" 
+              className="w-32 h-32 object-contain"
+            />
+          </div>
+          <div className="absolute bottom-20 left-10 opacity-10 animate-float" style={{animationDelay: '1s'}}>
+            <img 
+              src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(4).png" 
+              alt="Dance Element" 
+              className="w-28 h-28 object-contain"
+            />
+          </div>
         </div>
 
         <div className="relative max-w-5xl mx-auto text-center">
@@ -141,8 +157,17 @@ export default function Home() {
       </section>
 
       {/* Marketplace Preview Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-green-950/5 to-black">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-green-950/5 to-black relative">
+        {/* Dance Logo Component */}
+        <div className="absolute top-10 left-10 opacity-5 animate-float" style={{animationDelay: '2s'}}>
+          <img 
+            src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(3).png" 
+            alt="Dance Element" 
+            className="w-24 h-24 object-contain"
+          />
+        </div>
+        
+        <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-4 py-2 mb-6">
               <Coins className="w-4 h-4 text-green-400" />
@@ -206,9 +231,103 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Why MoveMint Helps Mantle Network Grow */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-black to-green-950/5">
+      {/* Dance Elements Showcase */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-green-950/10 to-black relative overflow-hidden">
         <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-4 py-2 mb-6">
+              <Sparkles className="w-4 h-4 text-green-400" />
+              <span className="text-green-300 font-medium">Dance Culture</span>
+            </div>
+            <h2 className="text-4xl font-bold text-white mb-4">Where Street Dance Meets Blockchain</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+              Celebrating the art, culture, and community of street dance through NFT technology
+            </p>
+          </div>
+          
+          {/* Dance Logo Components Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
+            <div className="text-center group">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-green-500/20 rounded-full blur-2xl group-hover:blur-3xl transition-all"></div>
+                <img 
+                  src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(5).png" 
+                  alt="Street Dance Culture" 
+                  className="relative w-48 h-48 mx-auto object-contain group-hover:scale-110 transition-transform duration-500 animate-float"
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">Urban Expression</h3>
+              <p className="text-gray-400 text-sm">
+                Capture the raw energy and creativity of street dance culture in digital form
+              </p>
+            </div>
+            
+            <div className="text-center group">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-green-500/20 rounded-full blur-2xl group-hover:blur-3xl transition-all"></div>
+                <img 
+                  src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(4).png" 
+                  alt="Dance Movement" 
+                  className="relative w-48 h-48 mx-auto object-contain group-hover:scale-110 transition-transform duration-500 animate-float" 
+                  style={{animationDelay: '1s'}}
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">Dynamic Movement</h3>
+              <p className="text-gray-400 text-sm">
+                Every move tells a story - preserve your choreography as unique digital assets
+              </p>
+            </div>
+            
+            <div className="text-center group">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-green-500/20 rounded-full blur-2xl group-hover:blur-3xl transition-all"></div>
+                <img 
+                  src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(3).png" 
+                  alt="Dance Community" 
+                  className="relative w-48 h-48 mx-auto object-contain group-hover:scale-110 transition-transform duration-500 animate-float" 
+                  style={{animationDelay: '2s'}}
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">Community Spirit</h3>
+              <p className="text-gray-400 text-sm">
+                Connect with dancers worldwide and build a thriving creative community
+              </p>
+            </div>
+          </div>
+          
+          {/* Call to Action */}
+          <div className="text-center mt-16">
+            <Button 
+              onClick={() => router.push("/app/mint")}
+              className="bg-gradient-to-r from-green-400 to-green-600 hover:from-green-300 hover:to-green-500 text-black font-semibold px-10 py-4 h-auto shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all cursor-pointer hover:scale-105 inline-flex items-center gap-3 text-lg"
+            >
+              <Sparkles className="w-5 h-5" />
+              Start Your Dance Journey
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Why MoveMint Helps Mantle Network Grow */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-black to-green-950/5 relative">
+        {/* Dance Logo Components */}
+        <div className="absolute top-1/4 right-20 opacity-8 animate-float" style={{animationDelay: '0.5s'}}>
+          <img 
+            src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(5).png" 
+            alt="Dance Element" 
+            className="w-20 h-20 object-contain"
+          />
+        </div>
+        <div className="absolute bottom-1/4 left-16 opacity-8 animate-float" style={{animationDelay: '1.5s'}}>
+          <img 
+            src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(4).png" 
+            alt="Dance Element" 
+            className="w-24 h-24 object-contain"
+          />
+        </div>
+        
+        <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-4 py-2 mb-6">
               <Rocket className="w-4 h-4 text-green-400" />
@@ -279,8 +398,17 @@ export default function Home() {
       </section>
 
       {/* Mantle Network Benefits */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 relative">
+        {/* Dance Logo Component */}
+        <div className="absolute top-20 right-10 opacity-6 animate-float" style={{animationDelay: '3s'}}>
+          <img 
+            src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(3).png" 
+            alt="Dance Element" 
+            className="w-28 h-28 object-contain"
+          />
+        </div>
+        
+        <div className="max-w-6xl mx-auto relative">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-4 py-2 mb-6">
               <span className="text-green-300 font-medium">Why Mantle Network</span>
@@ -347,6 +475,29 @@ export default function Home() {
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/2 right-0 w-96 h-96 bg-green-600/5 rounded-full blur-3xl"></div>
           <div className="absolute top-1/4 left-0 w-64 h-64 bg-green-500/3 rounded-full blur-2xl"></div>
+          
+          {/* Dance Logo Components in CTA */}
+          <div className="absolute top-10 left-1/4 opacity-10 animate-float" style={{animationDelay: '2.5s'}}>
+            <img 
+              src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(5).png" 
+              alt="Dance Element" 
+              className="w-36 h-36 object-contain"
+            />
+          </div>
+          <div className="absolute bottom-10 right-1/4 opacity-10 animate-float" style={{animationDelay: '1.8s'}}>
+            <img 
+              src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(4).png" 
+              alt="Dance Element" 
+              className="w-32 h-32 object-contain"
+            />
+          </div>
+          <div className="absolute top-1/3 right-10 opacity-8 animate-float" style={{animationDelay: '0.8s'}}>
+            <img 
+              src="https://ik.imagekit.io/0whwkbkhd/Black%20and%20White%20Illustrative%20Street%20Dance%20Logo%20(3).png" 
+              alt="Dance Element" 
+              className="w-20 h-20 object-contain"
+            />
+          </div>
         </div>
         <div className="relative max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-green-950/20 border border-green-500/20 rounded-full px-4 py-2 mb-6">

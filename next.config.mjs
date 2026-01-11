@@ -20,6 +20,10 @@ const nextConfig = {
   experimental: {
     // Add any experimental features here if needed
   },
+  // Turbopack configuration for Next.js 16
+  turbopack: {
+    // Empty config to silence the warning and use default Turbopack settings
+  },
   webpack: (config, { isServer }) => {
     // Handle TensorFlow.js
     if (!isServer) {
